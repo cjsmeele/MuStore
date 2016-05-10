@@ -25,12 +25,12 @@ private:
      */
     void close();
 
+public:
     MuBlockStoreError seek(size_t blockN);
 
     MuBlockStoreError read (void *buffer);
     MuBlockStoreError write(const void *buffer);
 
-public:
     MuFileBlockStore(const char *path);
     ~MuFileBlockStore();
 };
