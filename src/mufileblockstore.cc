@@ -21,6 +21,8 @@ MuBlockStoreError MuFileBlockStore::seek(size_t blockN) {
         return MUBLOCKSTORE_ERR_IO;
     }
 
+    pos = blockN;
+
     return MUBLOCKSTORE_ERR_OK;
 }
 
