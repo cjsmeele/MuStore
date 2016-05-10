@@ -24,7 +24,6 @@ CXXWARNINGS := \
 	-Wconversion
 
 CXXFLAGS := \
-	-fdiagnostics-color=auto \
 	-Os \
 	-g0 \
 	-std=c++11 \
@@ -51,19 +50,25 @@ endif
 
 OBJFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
 
-.PHONY: all doc test clean
+.PHONY: all doc test clean clean-all
 
 all: $(BINFILE)
 
 doc: $(HXXFILES) doxygen.conf
 
+test: $(BINFILE)
+	$(MAKE) -C test
+
 clean:
 	rm  -vf $(BINFILE)
 	rm -rvf $(OBJDIR)
+
+clean-all: clean
+	$(MAKE) -C test clean
 
 $(BINFILE): $(OBJFILES)
 	$(AR) rcs $@ $^
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cc
-	mkdir -p $(OBJDIR)
+	@mkdir -p $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c -o $@ $^
