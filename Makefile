@@ -55,6 +55,7 @@ OBJFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
 all: $(BINFILE)
 
 doc: $(HXXFILES) doxygen.conf
+	doxygen doxygen.conf
 
 test: $(BINFILE)
 	$(MAKE) -C test

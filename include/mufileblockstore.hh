@@ -31,6 +31,10 @@ public:
     MuBlockStoreError read (void *buffer);
     MuBlockStoreError write(const void *buffer);
 
+    // Needed because we overload read and write methods.
+    using MuBlockStore::read;
+    using MuBlockStore::write;
+
     MuFileBlockStore(const char *path);
     ~MuFileBlockStore();
 };

@@ -101,10 +101,10 @@
     _result_desc = NULL;                                                \
     TEST_NAME(name)(&_progress, &_result, &_result_desc);               \
     if (_result) {                                                      \
-        printf("\x1b[1;32m" "pass" "\x1b[0m[%d]\n", _progress);         \
+        printf("\x1b[1;32m" "pass" "\x1b[0m %d/%d\n", _progress, _progress); \
         _succeeded++;                                                   \
     } else {                                                            \
-        printf("\x1b[1;31m" "fail" "\x1b[0m[%d] (%s)\n", _progress, _result_desc); \
+        printf("\x1b[1;31m" "fail" "\x1b[0m at %d (%s)\n", _progress, _result_desc); \
         if (_result_desc)                                               \
             free(_result_desc);                                         \
         _failed++;                                                      \
