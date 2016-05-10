@@ -1,0 +1,7 @@
+*.swp
+*\#*
+*~*
+.clang_complete
+/obj/
+*.a
+/doc/
