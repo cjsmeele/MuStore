@@ -32,7 +32,7 @@ protected:
     size_t blockSize;  ///< The smallest size for all I/O operations in bytes.
     size_t blockCount; ///< Amount of blocks available on this medium.
     bool   writable;   ///< Whether this medium is writable.
-    size_t pos;        ///< Current block number, incremented on read/write ops.
+    size_t pos;        ///< Current block number (LBA), incremented on read/write ops.
     // }}}
 
 public:
@@ -71,6 +71,10 @@ public:
     }
     // }}}
 
-    MuBlockStore() = default;
+    MuBlockStore(size_t blockSize_ = 512, size_t blockCount_ = 0, bool writable_ = false)
+        : blockSize(blockSize_),
+          blockCount(blockCount_),
+          writable(writable_),
+          pos(0) { }
     virtual ~MuBlockStore() = default;
 };

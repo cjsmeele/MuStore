@@ -60,10 +60,8 @@ MuBlockStoreError MuFileBlockStore::write(const void *buffer) {
     return MUBLOCKSTORE_ERR_OK;
 }
 
-MuFileBlockStore::MuFileBlockStore(const char *path) {
-    blockSize = 512;
-    writable  = true;
-    pos       = 0;
+MuFileBlockStore::MuFileBlockStore(const char *path)
+    : MuBlockStore(512, 0, true) {
 
     fh = fopen(path, "r+b");
     if (fh) {
