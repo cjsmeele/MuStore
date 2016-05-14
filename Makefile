@@ -15,7 +15,6 @@ CXXWARNINGS := \
 	-Wshadow \
 	-Wpedantic \
 	-Wpointer-arith \
-	-Wno-int-to-pointer-cast \
 	-Wcast-align \
 	-Wwrite-strings \
 	-Wmissing-declarations \
