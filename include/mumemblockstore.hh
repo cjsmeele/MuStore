@@ -27,6 +27,8 @@ public:
     using MuBlockStore::write;
 
     MuMemBlockStore(void *store, size_t size);
+    MuMemBlockStore(const void *store, size_t size);
+
     ~MuMemBlockStore() = default;
 };
 

@@ -35,7 +35,7 @@ public:
     using MuBlockStore::read;
     using MuBlockStore::write;
 
-    MuFileBlockStore(const char *path);
+    MuFileBlockStore(const char *path, bool writable = true);
     ~MuFileBlockStore();
 };
 

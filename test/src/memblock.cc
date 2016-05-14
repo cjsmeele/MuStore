@@ -24,5 +24,9 @@ TEST_MAIN() {
     TEST_BLOCKSTORE_WITH(MuMemBlockStore(&image, image.size()), read  );
     TEST_BLOCKSTORE_WITH(MuMemBlockStore(&image, image.size()), write );
 
+    auto const image_ro = image;
+
+    TEST_BLOCKSTORE_WITH(MuMemBlockStore(&image_ro, image_ro.size()), write_ro);
+
     TEST_END();
 }

@@ -18,6 +18,7 @@ TEST_MAIN() {
     TEST_BLOCKSTORE_WITH(MuFileBlockStore(MUTEST_FAT12FILE), seek  );
     TEST_BLOCKSTORE_WITH(MuFileBlockStore(MUTEST_FAT12FILE), read  );
     TEST_BLOCKSTORE_WITH(MuFileBlockStore(MUTEST_FAT12FILE), write );
+    TEST_BLOCKSTORE_WITH(MuFileBlockStore(MUTEST_FAT12FILE, false), write_ro);
 
     TEST_END();
 }

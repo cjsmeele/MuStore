@@ -101,3 +101,20 @@ TEST(write) {
            "read block %lu differs from written block %lu",
            store->getBlockCount(), store->getBlockCount());
 }
+
+TEST(write_ro) {
+    ASSERT(store, "store was not created");
+    MuBlockStoreError err;
+
+    ASSERT(store->getBlockSize() >= 512,  "block size too small");
+    ASSERT(store->getBlockSize() <= 4096, "can't test, block size too large");
+
+    uint8_t buffer[4096] = { };
+
+    err = store->write(store->getBlockCount()-1, buffer);
+
+    ASSERT(err == MUBLOCKSTORE_ERR_NOT_WRITABLE, "write to read-only medium should fail (err=%d)", err);
+    ASSERT(store->getPos() == store->getBlockCount()-1,
+           "pos should be %lu (unchanged) after failed write to read-only medium (pos=%lu)",
+           store->getBlockCount()-1, store->getPos());
+}
