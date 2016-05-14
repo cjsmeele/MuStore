@@ -1,11 +1,12 @@
 # Copyright (c) 2016, Chris Smeele
 
 SRCDIR := ./src
+INCDIR := ./include
 OBJDIR := ./obj
 
 #CXXFILES := $(shell find $(SRCDIR) -name "*.cc" -print)
 CXXFILES :=
-HXXFILES := $(shell find $(SRCDIR) -name "*.hh" -print)
+HXXFILES := $(shell find $(SRCDIR) $(INCDIR) -name "*.hh" -print)
 BINFILE  := libmustore.a
 
 CXXWARNINGS := \
@@ -32,7 +33,7 @@ CXXFLAGS := \
 	-I./include \
 	$(CXXWARNINGS)
 
-MUSTORE_ENABLE_BLOCK ?= file
+MUSTORE_ENABLE_BLOCK ?= file mem
 MUSTORE_ENABLE_FS    ?=
 MUSTORE_ENABLE_VFS   ?= 1
 
@@ -70,6 +71,6 @@ clean-all: clean
 $(BINFILE): $(OBJFILES)
 	$(AR) rcs $@ $^
 
-$(OBJDIR)/%.o: $(SRCDIR)/%.cc
+$(OBJDIR)/%.o: $(SRCDIR)/%.cc $(HXXFILES)
 	@mkdir -p $(OBJDIR)
-	$(CXX) $(CXXFLAGS) -c -o $@ $^
+	$(CXX) $(CXXFLAGS) -c -o $@ $<

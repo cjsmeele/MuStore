@@ -52,6 +52,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctime>
 
 #define TEST_NAME(name) _test_ ## name
 
@@ -80,6 +81,7 @@
     int _succeeded = 0;                        \
     int _failed    = 0;                        \
     int _test_i    = 1;                        \
+    srand(time(NULL));                         \
     _test_logfile = fopen("tests.log", "a");   \
     if (!_test_logfile)                        \
         _test_logfile = stderr;
