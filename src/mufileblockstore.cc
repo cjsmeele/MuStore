@@ -60,10 +60,14 @@ MuBlockStoreError MuFileBlockStore::write(const void *buffer) {
     return MUBLOCKSTORE_ERR_OK;
 }
 
-MuFileBlockStore::MuFileBlockStore(const char *path, bool writable)
-    : MuBlockStore(512, 0, writable) {
+MuFileBlockStore::MuFileBlockStore(const char *path, bool writable_)
+    : MuBlockStore(512, 0, writable_) {
 
-    fh = fopen(path, "r+b");
+    if (writable_)
+        fh = fopen(path, "r+b");
+    else
+        fh = fopen(path, "rb");
+
     if (fh) {
         off_t endPos;
 
