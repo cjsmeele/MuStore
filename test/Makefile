@@ -1,7 +1,7 @@
 SRCDIR := ./src
 BINDIR := ./bin
 
-CXXFILES := $(shell find $(SRCDIR) -name "*.cc" -print)
+CXXFILES := $(shell find $(SRCDIR) -name "*.cc" -print | sort)
 BINFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(BINDIR)/%)
 
 CXXFLAGS := -Wall -Wextra -Wpedantic -O0 -g3 -std=c++11 -I. -I../include
