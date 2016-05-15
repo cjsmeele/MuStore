@@ -9,7 +9,7 @@
 #include <cstring>
 #include <cstdio>
 
-// We distinguish FAT types using the number of clusers.
+// We distinguish FAT types using the number of clusters.
 // Source: http://www.win.tue.nl/~aeb/linux/fs/fat/fat-1.html
 static const size_t FAT12_MAX_CLUSTER_COUNT = 4084;
 static const size_t FAT16_MAX_CLUSTER_COUNT = 65524;
