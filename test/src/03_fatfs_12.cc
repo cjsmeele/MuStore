@@ -11,6 +11,13 @@
 #include "mufileblockstore.hh"
 #include "mufatfs.hh"
 
+TEST(fat_subtype) {
+    auto store = MuFileBlockStore(MUTEST_FAT12FILE);
+    auto fs_   = MuFatFs(store);
+    ASSERT(fs_.getFsSubType() == MuFatFs::SubType::FAT12,
+           "fat subtype must be FAT12, is %d", fs_.getFsSubType());
+}
+
 TEST_MAIN() {
     TEST_START();
 
@@ -18,6 +25,9 @@ TEST_MAIN() {
     LOG("bc: %lu", store.getBlockCount());
 
     TEST_FS_WITH(MuFatFs(store), create);
+
+    RUN_TEST(fat_subtype);
+
     TEST_FS_WITH(MuFatFs(store), metadata);
     TEST_FS_WITH(MuFatFs(store), file_read);
     TEST_FS_WITH(MuFatFs(store), directory_read);

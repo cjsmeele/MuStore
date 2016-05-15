@@ -34,11 +34,22 @@ public:
 
 private:
     // (E)BPB information. {{{
-    uint16_t logicalSectorSize = 0; ///< Must be 512 (we do not support other values).
+    uint16_t logicalSectorSize = 0; ///< Must be 512 and equal to the block size (we do not currently support other values).
+    uint8_t  fatCount          = 0;
+    uint32_t fatSize           = 0; ///< In blocks.
     uint8_t  clusterSize       = 0; ///< In blocks.
+    uint8_t  clusterCount      = 0;
     uint16_t reservedBlocks    = 0;
-    uint32_t blockCount        = 0;
-    uint32_t fatSize           = 0;
+
+    size_t fatLba            = 0;
+    size_t dataLba           = 0;
+
+    size_t rootDirEntryCount = 0;
+    size_t rootDirCluster    = 0; ///< Used only in FAT32. For FAT1x use fatLba + fatSize*fatCount to get an LBA.
+
+    size_t blockCount       = 0;
+    size_t dataBlockCount   = 0;
+    size_t dataClusterCount = 0;
     // }}}
 
     SubType subType = SubType::NONE;
