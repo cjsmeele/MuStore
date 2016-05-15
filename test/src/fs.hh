@@ -34,4 +34,26 @@ TEST(metadata) {
            "volume label should be 'MUSTORETEST', is '%s'", fs->getVolumeLabel());
 }
 
-// WIP.
+TEST(node_get) {
+    MuFsError err;
+    auto dir = fs->getRoot(err);
+    ASSERT(!err, "getRoot() failed (err=%d)", err);
+
+    // WIP.
+}
+
+TEST(file_read) {
+    MuFsError err;
+    auto dir = fs->getRoot(err);
+    ASSERT(!err, "getRoot() failed (err=%d)", err);
+
+    // WIP.
+}
+
+TEST(directory_read) {
+    MuFsError err;
+    auto dir = fs->getRoot(err);
+    ASSERT(!err, "getRoot() failed (err=%d)", err);
+
+    // WIP.
+}

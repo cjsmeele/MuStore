@@ -8,7 +8,19 @@
 
 #include "mufs.hh"
 
+/**
+ * \brief FAT filesystem.
+ */
 class MuFatFs : public MuFs {
+private:
+    struct NodeContext {
+        size_t lbaStart;
+        size_t lbaCurrent;
+    };
+    static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
+                  "FS context size exceeds reserved space in MuFsNode type"
+                  " (please increase MuFsNode::CONTEXT_SIZE)"
+                 );
 
 public:
     enum class SubType {
@@ -21,9 +33,12 @@ public:
 private:
     SubType subType = SubType::NONE;
 
+    size_t  fatCacheLba = 0; ///< LBA of the currently cached FAT block. There's never a FAT at LBA 0.
+    uint8_t fatCache[512];   ///< Hold one FAT block in memory.
+
 public:
     const char *getFsType() const { return "FAT"; }
-    SubType getFsSubType() const { return subType; }
+    SubType  getFsSubType() const { return subType; }
 
     // Directory operations {{{
     MuFsNode getRoot(MuFsError &err);

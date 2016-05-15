@@ -6,6 +6,10 @@
  */
 #include "mufsnode.hh"
 
+MuFsNode MuFsNode::get(const char *path, MuFsError &err) {
+    return fs.getChild(*this, path, err);
+}
+
 MuFsError MuFsNode::seek(size_t pos_) {
     return fs.seek(*this, pos_);
 }

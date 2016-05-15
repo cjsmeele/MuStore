@@ -55,6 +55,8 @@ protected:
         bool directory
     );
 
+    void *getNodeContext(MuFsNode &node);
+
 public:
             const char *getVolumeLabel() const { return volumeLabel; }
     virtual const char *getFsType()      const = 0;

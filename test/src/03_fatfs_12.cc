@@ -19,6 +19,8 @@ TEST_MAIN() {
 
     TEST_FS_WITH(MuFatFs(store), create);
     TEST_FS_WITH(MuFatFs(store), metadata);
+    TEST_FS_WITH(MuFatFs(store), file_read);
+    TEST_FS_WITH(MuFatFs(store), directory_read);
 
     // WIP.
 

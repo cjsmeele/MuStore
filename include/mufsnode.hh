@@ -18,15 +18,25 @@ class MuFsNode {
 
 public:
     static const size_t MAX_NAME_LENGTH = 32;
+    static const size_t CONTEXT_SIZE    = 16;
 
 protected:
-    MuFs  &fs;
+    MuFs  &fs; ///< The MuFs in which this file resides.
+
+    /**
+     * \brief Fs private information.
+     *
+     * This may contain information such as the LBA of the file's
+     * current position.
+     */
+    uint8_t fsContext[CONTEXT_SIZE] = { };
+
     bool   exists    = false;
     bool   directory = false;
-    size_t size      = 0;
+    size_t size      = 0; ///< File size in bytes. This has no meaning for directories.
     size_t pos       = 0; ///< Byte index for files, directory index for directories.
 
-    char   name[MAX_NAME_LENGTH+1] = { };
+    char   name[MAX_NAME_LENGTH+1] = { }; ///< Node basename.
 
 public:
     bool doesExist()      const { return exists;    }
@@ -35,6 +45,9 @@ public:
     bool getPos()         const { return pos;       }
     const char *getName() const { return name;      }
 
+    // Proxy functions {{{
+    MuFsNode get(const char *path, MuFsError &err);
+
     MuFsError seek(size_t pos_);
     MuFsError rewind() { return seek(0); };
 
@@ -42,6 +55,7 @@ public:
     MuFsError write(const void *buffer, size_t size_);
 
     MuFsNode readDir(MuFsError &err);
+    // }}}
 
     MuFsNode(MuFs &fs_)
         : fs(fs_) { }

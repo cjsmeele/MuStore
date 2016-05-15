@@ -10,6 +10,7 @@
 #include <cstdio>
 
 // Directory operations {{{
+
 MuFsNode MuFatFs::getRoot(MuFsError &err) {
     err = MUFS_ERR_OK;
     return makeNode("/", true, true);
