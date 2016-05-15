@@ -20,6 +20,10 @@ MuFsNode MuFs::makeNode(
     return node;
 }
 
+void *MuFs::getNodeContext(MuFsNode &node) {
+    return node.fsContext;
+}
+
 MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
 
     // Trim leading slashes.

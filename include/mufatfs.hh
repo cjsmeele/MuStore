@@ -30,11 +30,21 @@ public:
         FAT32,
     };
 
+    static const size_t MAX_BLOCK_SIZE = 512;
+
 private:
+    // (E)BPB information. {{{
+    uint16_t logicalSectorSize = 0; ///< Must be 512 (we do not support other values).
+    uint8_t  clusterSize       = 0; ///< In blocks.
+    uint16_t reservedBlocks    = 0;
+    uint32_t blockCount        = 0;
+    uint32_t fatSize           = 0;
+    // }}}
+
     SubType subType = SubType::NONE;
 
     size_t  fatCacheLba = 0; ///< LBA of the currently cached FAT block. There's never a FAT at LBA 0.
-    uint8_t fatCache[512];   ///< Hold one FAT block in memory.
+    uint8_t fatCache[MAX_BLOCK_SIZE];   ///< Hold one FAT block in memory.
 
 public:
     const char *getFsType() const { return "FAT"; }
