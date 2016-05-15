@@ -12,15 +12,6 @@
  * \brief FAT filesystem.
  */
 class MuFatFs : public MuFs {
-private:
-    struct NodeContext {
-        size_t lbaStart;
-        size_t lbaCurrent;
-    };
-    static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
-                  "FS context size exceeds reserved space in MuFsNode type"
-                  " (please increase MuFsNode::CONTEXT_SIZE)"
-                 );
 
 public:
     enum class SubType {
@@ -42,6 +33,7 @@ private:
     uint16_t reservedBlocks    = 0;
 
     size_t fatLba            = 0;
+    size_t rootLba           = 0; ///< FAT1x only.
     size_t dataLba           = 0;
 
     size_t rootDirEntryCount = 0;
@@ -54,8 +46,18 @@ private:
 
     SubType subType = SubType::NONE;
 
-    size_t  fatCacheLba = 0; ///< LBA of the currently cached FAT block. There's never a FAT at LBA 0.
-    uint8_t fatCache[MAX_BLOCK_SIZE];   ///< Hold one FAT block in memory.
+    size_t  fatCacheLba = 0; ///< LBA of the currently cached FAT block.
+    uint8_t fatCache[MAX_BLOCK_SIZE];
+
+    size_t  dataCacheLba = 0; ///< LBA of the currently cached data block.
+    uint8_t dataCache[MAX_BLOCK_SIZE];
+
+    MuBlockStoreError getBlock(size_t blockNo, void *buffer);
+    MuBlockStoreError getCacheBlock(size_t lba, void *cache, size_t &cacheLba);
+
+    MuBlockStoreError getFatBlock (size_t blockNo, void **buffer);
+    MuBlockStoreError getRootBlock(size_t blockNo, void **buffer);
+    MuBlockStoreError getDataBlock(size_t blockNo, void **buffer);
 
 public:
     const char *getFsType() const { return "FAT"; }

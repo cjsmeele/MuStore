@@ -29,8 +29,8 @@ TEST_MAIN() {
     RUN_TEST(fat_subtype);
 
     TEST_FS_WITH(MuFatFs(store), metadata);
-    TEST_FS_WITH(MuFatFs(store), file_read);
-    TEST_FS_WITH(MuFatFs(store), directory_read);
+    TEST_FS_WITH(MuFatFs(store), root_readdir);
+    //TEST_FS_WITH(MuFatFs(store), file_read);
 
     // WIP.
 

@@ -2,6 +2,7 @@ SRCDIR := ./src
 BINDIR := ./bin
 
 CXXFILES := $(shell find $(SRCDIR) -name "*.cc" -print | sort)
+HXXFILES := $(shell find $(SRCDIR) -name "*.hh" -print)
 BINFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(BINDIR)/%)
 
 CXXFLAGS := -Wall -Wextra -Wpedantic -O0 -g3 -std=c++11 -I. -I../include
@@ -37,7 +38,7 @@ clean:
 	rm -vf  $(TESTFILES)
 	rm -rvf $(BINDIR)
 
-$(BINDIR)/%: $(SRCDIR)/%.cc ../libmustore.a $(SRCDIR)/test.hh
+$(BINDIR)/%: $(SRCDIR)/%.cc ../libmustore.a $(HXXFILES)
 	@mkdir -p $(BINDIR)
 	$(CXX) $(CXXFLAGS) -o $@ $< $(LDFLAGS)
 

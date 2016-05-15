@@ -20,6 +20,10 @@ MuFsNode MuFs::makeNode(
     return node;
 }
 
+void MuFs::nodeUpdatePos(MuFsNode &node, size_t pos) {
+    node.pos = pos;
+}
+
 void *MuFs::getNodeContext(MuFsNode &node) {
     return node.fsContext;
 }

@@ -7,13 +7,21 @@
 #include "mufatfs.hh"
 
 #include <cstring>
-#include <cstdio>
 
 // We distinguish FAT types using the number of clusters.
 // Source: http://www.win.tue.nl/~aeb/linux/fs/fat/fat-1.html
 static const size_t FAT12_MAX_CLUSTER_COUNT = 4084;
 static const size_t FAT16_MAX_CLUSTER_COUNT = 65524;
 // If the number of clusters is greater than the maximum for FAT16, FAT32 is assumed.
+#include <cstdio>
+struct NodeContext {
+    size_t start;
+    size_t current;
+};
+static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
+              "FS context size exceeds reserved space in MuFsNode type"
+              " (please increase MuFsNode::CONTEXT_SIZE)"
+             );
 
 // FAT data structures {{{
 
@@ -120,6 +128,57 @@ struct DirEntry {
 
 // }}}
 
+static void trimName(char *str, size_t size) {
+    if (!size)
+        return;
+
+    for (size_t i = size-1; ; i--) {
+        if (str[i] == ' ')
+            str[i] = '\0';
+        else if (str[i])
+            break;
+
+        if (i == 0)
+            break;
+    }
+}
+
+MuBlockStoreError MuFatFs::getBlock(size_t lba, void *buffer) {
+    return store.read(lba, buffer);
+}
+MuBlockStoreError MuFatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
+    if (lba == cacheLba) {
+        return MUBLOCKSTORE_ERR_OK;
+    } else {
+        auto err = getBlock(lba, cache);
+        cacheLba = err ? 0 : lba; // Invalidate the cache on error.
+        return err;
+    }
+}
+
+MuBlockStoreError MuFatFs::getFatBlock(size_t blockNo, void **buffer) {
+    auto err = getCacheBlock(fatLba + blockNo, fatCache, fatCacheLba);
+    if (!err)
+        *buffer = fatCache;
+    return err;
+}
+
+MuBlockStoreError MuFatFs::getDataBlock(size_t blockNo, void **buffer) {
+    auto err = getCacheBlock(dataLba + blockNo, dataCache, dataCacheLba);
+    if (!err)
+        *buffer = dataCache;
+    return err;
+}
+
+// Note: not valid for FAT32.
+MuBlockStoreError MuFatFs::getRootBlock(size_t blockNo, void **buffer) {
+    auto err = getCacheBlock(rootLba + blockNo, dataCache, dataCacheLba);
+    if (!err)
+        *buffer = dataCache;
+    return err;
+}
+
+
 // Directory operations {{{
 
 MuFsNode MuFatFs::getRoot(MuFsError &err) {
@@ -130,10 +189,76 @@ MuFsNode MuFatFs::getRoot(MuFsError &err) {
 MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(parent));
 
-    // TODO.
+    if (!parent.doesExist()) {
+        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        return {*this};
+    } else if (!parent.isDirectory()) {
+        err = MUFS_ERR_NOT_DIRECTORY;
+        return {*this};
+    }
 
-    err = MUFS_ERR_OPER_UNAVAILABLE;
-    return {*this};
+    if (
+        (subType == SubType::FAT12 || subType == SubType::FAT16)
+        && !strcmp(parent.getName(), "/")
+    ) {
+        // Special handling for the root directory region in FAT1x.
+        size_t pos      = parent.getPos();
+        size_t &realPos = ctx->current;
+
+        void *buffer;
+        DirEntry *entry = nullptr;
+
+        // Fetch the next regular direntry, skip 'disk' and 'volume label' types.
+        bool gotEntry = false;
+        do {
+            if (realPos >= rootDirEntryCount) {
+                // Hard limit of root directory reached.
+                err = MUFS_EOF;
+                return {*this};
+            }
+
+            auto err_ = getRootBlock(realPos * sizeof(DirEntry) / logicalSectorSize, &buffer);
+            if (err_) {
+                err = MUFS_ERR_IO;
+                return {*this};
+            }
+
+            entry = static_cast<DirEntry*>(buffer);
+            entry += realPos % (logicalSectorSize / sizeof(DirEntry));
+
+            if (!entry->name[0]) {
+                // End of directory reached.
+                err = MUFS_EOF;
+                return {*this};
+            }
+
+            if (!(entry->attrDisk | entry->attrVolumeLabel))
+                gotEntry = true;
+
+            realPos++;
+
+        } while (!gotEntry);
+
+        nodeUpdatePos(parent, pos+1);
+
+        char name[13] = { };
+        strncpy(name, entry->name, 11);
+        trimName(name, 8);
+        if (entry->extension[0] && entry->extension[0] != ' ')
+            strcat(name, ".");
+        strncat(name, entry->extension, 3);
+        trimName(name, 13);
+
+        err = MUFS_ERR_OK;
+        return makeNode(name, true, entry->attrDirectory);
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return {*this};
+
+    } else {
+        // TODO.
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return {*this};
+    }
 }
 
 // }}}
@@ -226,6 +351,9 @@ MuFatFs::MuFatFs(MuBlockStore &store_)
 
         if (!fatCount)
             goto _constructFail;
+    } { /////////////////////////////////////////////////////
+        rootLba = reservedBlocks
+                + fatSize * fatCount;
     } { /////////////////////////////////////////////////////
         dataLba = reservedBlocks
                 + fatSize * fatCount

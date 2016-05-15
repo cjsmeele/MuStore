@@ -55,6 +55,8 @@ protected:
         bool directory
     );
 
+    void nodeUpdatePos(MuFsNode &node, size_t newPos);
+
     void *getNodeContext(MuFsNode &node);
 
 public:
