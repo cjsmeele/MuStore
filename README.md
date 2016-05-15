@@ -17,4 +17,4 @@ See *[some doxygen page that has yet to be created]*.
 Copyright (c) 2016, Chris Smeele.
 
 MuStore is licensed under the GNU Lesser General Public License version
-3 (LGPLv3). See the `LICENSE` file for details.
+3 or higher (LGPLv3+). See the `LICENSE` file for details.

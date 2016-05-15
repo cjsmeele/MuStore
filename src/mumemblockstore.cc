@@ -1,3 +1,9 @@
+/**
+ * \file
+ * \author    Chris Smeele
+ * \copyright Copyright (c) 2016, Chris Smeele
+ * \license   LGPLv3+, see LICENSE
+ */
 #include "mumemblockstore.hh"
 #include <cstring>
 

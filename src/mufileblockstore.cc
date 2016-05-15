@@ -1,3 +1,10 @@
+/**
+ * \file
+ * \author    Chris Smeele
+ * \copyright Copyright (c) 2016, Chris Smeele
+ * \license   LGPLv3+, see LICENSE
+ */
+
 // For 64-bit ftell(). This is not portable outside of *nix platforms.
 #define _FILE_OFFSET_BITS 64
 
