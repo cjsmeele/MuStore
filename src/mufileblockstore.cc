@@ -5,7 +5,7 @@
  * \license   LGPLv3+, see LICENSE
  */
 
-// For 64-bit ftell(). This is not portable outside of *nix platforms.
+/// For 64-bit ftell(). This is not portable outside of *nix platforms.
 #define _FILE_OFFSET_BITS 64
 
 #include "mufileblockstore.hh"
