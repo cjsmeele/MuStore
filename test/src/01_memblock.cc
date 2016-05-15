@@ -6,10 +6,10 @@
  * \license   LGPLv3+, see LICENSE
  */
 #include "test.hh"
-#include "mumemblockstore.hh"
+#include "block.hh"
 
 #include <array>
-#include "block.hh"
+#include "mumemblockstore.hh"
 
 TEST_MAIN() {
     TEST_START();

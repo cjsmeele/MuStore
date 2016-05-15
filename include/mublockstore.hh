@@ -13,9 +13,9 @@
 /**
  * \brief MuBlockStore error numbers.
  *
- * Any non-zero value is an error.
+ * Any non-zero value indicates an error.
  */
-enum MuBlockStoreError {
+enum MuBlockStoreError : int {
     MUBLOCKSTORE_ERR_OK = 0,        ///< No error.
     MUBLOCKSTORE_ERR_IO,            ///< Generic I/O error.
     MUBLOCKSTORE_ERR_NOT_WRITABLE,  ///< Write to read-only medium attempted.
@@ -76,5 +76,6 @@ public:
           blockCount(blockCount_),
           writable(writable_),
           pos(0) { }
+
     virtual ~MuBlockStore() = default;
 };

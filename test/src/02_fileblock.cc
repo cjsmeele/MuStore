@@ -6,10 +6,9 @@
  * \license   LGPLv3+, see LICENSE
  */
 #include "test.hh"
-#include "mufileblockstore.hh"
-
-#include <ctime>
 #include "block.hh"
+
+#include "mufileblockstore.hh"
 
 TEST_MAIN() {
     TEST_START();

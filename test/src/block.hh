@@ -8,10 +8,10 @@
  * Note: These tests assume the provided media contain a 0xaa55 boot
  * sector signature.
  */
+#pragma once
+
 #include "test.hh"
 #include "mublockstore.hh"
-
-#pragma once
 
 MuBlockStore *store;
 

@@ -9,31 +9,36 @@ CXXFILES :=
 HXXFILES := $(shell find $(SRCDIR) $(INCDIR) -name "*.hh" -print)
 BINFILE  := libmustore.a
 
-CXXWARNINGS := \
+CXXWARNINGS += \
 	-Wall \
 	-Wextra \
-	-Wshadow \
 	-Wpedantic \
-	-Wpointer-arith \
+	-Wshadow \
 	-Wcast-align \
-	-Wwrite-strings \
 	-Wmissing-declarations \
 	-Wredundant-decls \
-	-Winline \
 	-Wuninitialized \
 	-Wconversion
 
-CXXFLAGS := \
-	-Os \
-	-g0 \
+CXXFLAGS += \
 	-std=c++11 \
 	-pipe \
 	-I. \
 	-I./include \
 	$(CXXWARNINGS)
 
+ifdef DEBUG
+CXXFLAGS += \
+	-O1 \
+	-g3
+else
+CXXFLAGS += \
+	-Os \
+	-g0
+endif
+
 MUSTORE_ENABLE_BLOCK ?= file mem
-MUSTORE_ENABLE_FS    ?=
+MUSTORE_ENABLE_FS    ?= fat
 MUSTORE_ENABLE_VFS   ?= 1
 
 -include Makefile.local
@@ -46,6 +51,10 @@ CXXFILES += $(SRCDIR)/mumemblockstore.cc
 endif
 ifneq (,$(findstring fat,$(MUSTORE_ENABLE_FS)))
 CXXFILES += $(SRCDIR)/mufatfs.cc
+endif
+
+ifneq (,$(MUSTORE_ENABLE_FS))
+CXXFILES += $(SRCDIR)/mufs.cc $(SRCDIR)/mufsnode.cc
 endif
 
 OBJFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
