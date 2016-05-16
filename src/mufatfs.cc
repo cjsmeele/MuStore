@@ -223,10 +223,10 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
             void *buffer;
             uint32_t clustersPerFatSector
                 = subType == SubType::FAT12
-                ? logicalSectorSize / 12
+                ? logicalSectorSize / 1 // XXX
                 : subType == SubType::FAT16
-                ? logicalSectorSize / 16
-                : logicalSectorSize / 32;
+                ? logicalSectorSize / 2
+                : logicalSectorSize / 4;
 
             size_t currentCluster = blockToCluster(ctx->currentBlock);
             size_t nextCluster    = 0;
@@ -291,7 +291,7 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
         err = getNodeBlock(parent, &buffer);
         if (err)
             return {*this};
-        if (ctx->currentEntry+1 % (logicalSectorSize / sizeof(DirEntry)) == 0) {
+        if ((ctx->currentEntry + 1) % (logicalSectorSize / sizeof(DirEntry)) == 0) {
             err = incNodeBlock(parent);
             if (err)
                 return {*this};
@@ -317,7 +317,7 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     nodeUpdatePos(parent, parent.getPos()+1);
 
     char name[13] = { };
-    strncpy(name, entry->name, 11);
+    strncpy(name, entry->name, 8);
     trimName(name, 8);
     if (entry->extension[0] && entry->extension[0] != ' ')
         strcat(name, ".");

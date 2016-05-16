@@ -1,5 +1,5 @@
-/_test_fat12.bin
-/_test_fat16.bin
-/_test_fat32.bin
+/_test_*.bin
 /tests.log
 /bin
+/testfs_large/*
+!/testfs_large/genfiles.pl
