@@ -13,7 +13,7 @@
 static const size_t FAT12_MAX_CLUSTER_COUNT = 4084;
 static const size_t FAT16_MAX_CLUSTER_COUNT = 65524;
 // If the number of clusters is greater than the maximum for FAT16, FAT32 is assumed.
-#include <cstdio>
+
 struct NodeContext {
     size_t start;
     size_t current;
@@ -36,7 +36,7 @@ struct BootRecord {
     /**
      * \brief FAT Bios Parameter Block.
      */
-    struct {
+    struct BiosParameterBlock {
         uint16_t blockSize;   ///< In bytes.
         uint8_t  clusterSize; ///< In blocks.
         uint16_t reservedBlocks;
@@ -58,7 +58,7 @@ struct BootRecord {
         struct {
             uint8_t  driveNumber;
             uint8_t  _reserved1;
-            uint8_t  extendedBootSignature; ///< 29 if the following fields are valid, 28 otherwise.
+            uint8_t  extendedBootSignature; ///< 0x29 if the following fields are valid, 0x28 otherwise.
             uint32_t volumeId;
             char     volumeLabel[11];
             char     fsType[8];
@@ -80,7 +80,7 @@ struct BootRecord {
             uint8_t  _reserved1[12];
             uint8_t  driveNumber;
             uint8_t  _reserved2;
-            uint8_t  extendedBootSignature; ///< 29 if the following fields are valid, 28 otherwise.
+            uint8_t  extendedBootSignature; ///< 0x29 if the following fields are valid, 0x28 otherwise.
             uint32_t volumeId;
             char     volumeLabel[11];
             char     fsType[8];
@@ -391,10 +391,13 @@ MuFatFs::MuFatFs(MuBlockStore &store_)
     if (subType == SubType::FAT32)
         rootDirCluster = br->ebpb.fat32.rootDirCluster;
 
-    if (subType == SubType::FAT12 || subType == SubType::FAT16)
+    // Copy volume label if available.
+    if ((subType == SubType::FAT12 || subType == SubType::FAT16)
+        && br->ebpb.fat1x.extendedBootSignature == 0x29) {
         strncpy(volumeLabel, br->ebpb.fat1x.volumeLabel, 11);
-    else if (subType == SubType::FAT32)
+    } else if (subType == SubType::FAT32 && br->ebpb.fat32.extendedBootSignature == 0x29) {
         strncpy(volumeLabel, br->ebpb.fat32.volumeLabel, 11);
+    }
 
     return;
 
