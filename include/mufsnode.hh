@@ -18,7 +18,7 @@ class MuFsNode {
 
 public:
     static const size_t MAX_NAME_LENGTH = 32;
-    static const size_t CONTEXT_SIZE    = 16;
+    static const size_t CONTEXT_SIZE    = 24;
 
 protected:
     MuFs  &fs; ///< The MuFs in which this file resides.

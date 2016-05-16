@@ -37,7 +37,7 @@ private:
     size_t dataLba           = 0;
 
     size_t rootDirEntryCount = 0;
-    size_t rootDirCluster    = 0; ///< Used only in FAT32. For FAT1x use fatLba + fatSize*fatCount to get an LBA.
+    size_t rootCluster       = 0; ///< FAT32 only.
 
     size_t blockCount       = 0;
     size_t dataBlockCount   = 0;
@@ -58,6 +58,9 @@ private:
     MuBlockStoreError getFatBlock (size_t blockNo, void **buffer);
     MuBlockStoreError getRootBlock(size_t blockNo, void **buffer);
     MuBlockStoreError getDataBlock(size_t blockNo, void **buffer);
+
+    MuFsError getNodeBlock(MuFsNode &node, void **buffer);
+    MuFsError incNodeBlock(MuFsNode &node);
 
 public:
     const char *getFsType() const { return "FAT"; }

@@ -15,8 +15,9 @@ static const size_t FAT16_MAX_CLUSTER_COUNT = 65524;
 // If the number of clusters is greater than the maximum for FAT16, FAT32 is assumed.
 
 struct NodeContext {
-    size_t start;
-    size_t current;
+    size_t startBlock;   ///< Relative to FAT region (fatLba / rootLba / dataLba)
+    size_t currentBlock; ///< .
+    size_t currentEntry; ///< Byte for files, direntry for directories.
 };
 static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
               "FS context size exceeds reserved space in MuFsNode type"
@@ -74,7 +75,7 @@ struct BootRecord {
             uint32_t fatSize; ///< In blocks.
             uint16_t flags1;
             uint16_t version;
-            uint32_t rootDirCluster;
+            uint32_t rootCluster;
             uint16_t fsInfoBlock;
             uint16_t fatCopyBlock; ///< 3 blocks.
             uint8_t  _reserved1[12];
@@ -178,12 +179,54 @@ MuBlockStoreError MuFatFs::getRootBlock(size_t blockNo, void **buffer) {
     return err;
 }
 
+MuFsError MuFatFs::getNodeBlock(MuFsNode &node, void **buffer) {
+    NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
+
+    if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
+        // Special handling for the root directory region in FAT1x.
+
+        if (ctx->currentBlock >= rootDirEntryCount * sizeof(DirEntry) / logicalSectorSize)
+            // Hard limit of root directory reached.
+            return MUFS_EOF;
+
+        auto blockErr = getRootBlock(ctx->currentBlock, buffer);
+        if (blockErr)
+            return MUFS_ERR_IO;
+
+        return MUFS_ERR_OK;
+
+    } else {
+        return MUFS_ERR_OPER_UNAVAILABLE;
+    }
+}
+
+MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
+    NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
+
+    if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
+        ctx->currentBlock++; // No need for cluster magic.
+        return MUFS_ERR_OK;
+    } else {
+        return MUFS_ERR_OPER_UNAVAILABLE;
+    }
+}
 
 // Directory operations {{{
 
 MuFsNode MuFatFs::getRoot(MuFsError &err) {
     err = MUFS_ERR_OK;
-    return makeNode("/", true, true);
+    auto node = makeNode("/", true, true);
+    NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
+
+    if (subType == SubType::FAT12 || subType == SubType::FAT16)
+        ctx->startBlock = 0;
+    else
+        ctx->startBlock = rootCluster * clusterSize;
+
+    ctx->currentBlock = ctx->startBlock;
+    ctx->currentEntry = 0;
+
+    return node;
 }
 
 MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
@@ -197,68 +240,50 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
         return {*this};
     }
 
-    if (
-        (subType == SubType::FAT12 || subType == SubType::FAT16)
-        && !strcmp(parent.getName(), "/")
-    ) {
-        // Special handling for the root directory region in FAT1x.
-        size_t pos      = parent.getPos();
-        size_t &realPos = ctx->current;
+    void    *buffer = nullptr;
+    DirEntry *entry = nullptr;
 
-        void *buffer;
-        DirEntry *entry = nullptr;
-
-        // Fetch the next regular direntry, skip 'disk' and 'volume label' types.
-        bool gotEntry = false;
-        do {
-            if (realPos >= rootDirEntryCount) {
-                // Hard limit of root directory reached.
-                err = MUFS_EOF;
+    // Fetch the next regular direntry, skip 'disk' and 'volume label' types.
+    bool gotEntry = false;
+    do {
+        err = getNodeBlock(parent, &buffer);
+        if (err)
+            return {*this};
+        if (ctx->currentEntry+1 % (logicalSectorSize / sizeof(DirEntry)) == 0) {
+            err = incNodeBlock(parent);
+            if (err)
                 return {*this};
-            }
+        }
 
-            auto err_ = getRootBlock(realPos * sizeof(DirEntry) / logicalSectorSize, &buffer);
-            if (err_) {
-                err = MUFS_ERR_IO;
-                return {*this};
-            }
+        // Adjust pointer to current directory entry.
+        entry = static_cast<DirEntry*>(buffer)
+              + ctx->currentEntry % (logicalSectorSize / sizeof(DirEntry));
 
-            entry = static_cast<DirEntry*>(buffer);
-            entry += realPos % (logicalSectorSize / sizeof(DirEntry));
+        if (!entry->name[0]) {
+            // A name field starting with a NUL byte indicates directory EOF.
+            err = MUFS_EOF;
+            return {*this};
+        }
 
-            if (!entry->name[0]) {
-                // End of directory reached.
-                err = MUFS_EOF;
-                return {*this};
-            }
+        if (!(entry->attrDisk | entry->attrVolumeLabel))
+            gotEntry = true;
 
-            if (!(entry->attrDisk | entry->attrVolumeLabel))
-                gotEntry = true;
+        ctx->currentEntry++;
 
-            realPos++;
+    } while (!gotEntry);
 
-        } while (!gotEntry);
+    nodeUpdatePos(parent, parent.getPos()+1);
 
-        nodeUpdatePos(parent, pos+1);
+    char name[13] = { };
+    strncpy(name, entry->name, 11);
+    trimName(name, 8);
+    if (entry->extension[0] && entry->extension[0] != ' ')
+        strcat(name, ".");
+    strncat(name, entry->extension, 3);
+    trimName(name, 13);
 
-        char name[13] = { };
-        strncpy(name, entry->name, 11);
-        trimName(name, 8);
-        if (entry->extension[0] && entry->extension[0] != ' ')
-            strcat(name, ".");
-        strncat(name, entry->extension, 3);
-        trimName(name, 13);
-
-        err = MUFS_ERR_OK;
-        return makeNode(name, true, entry->attrDirectory);
-        err = MUFS_ERR_OPER_UNAVAILABLE;
-        return {*this};
-
-    } else {
-        // TODO.
-        err = MUFS_ERR_OPER_UNAVAILABLE;
-        return {*this};
-    }
+    err = MUFS_ERR_OK;
+    return makeNode(name, true, entry->attrDirectory);
 }
 
 // }}}
@@ -389,7 +414,7 @@ MuFatFs::MuFatFs(MuBlockStore &store_)
     // Extract information specific to FAT subtypes.
 
     if (subType == SubType::FAT32)
-        rootDirCluster = br->ebpb.fat32.rootDirCluster;
+        rootCluster = br->ebpb.fat32.rootCluster;
 
     // Copy volume label if available.
     if ((subType == SubType::FAT12 || subType == SubType::FAT16)

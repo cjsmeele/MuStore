@@ -10,8 +10,6 @@
 #include "mublockstore.hh"
 #include "mufsnode.hh"
 
-const size_t MUFS_MAX_PATH_LENGTH = 256;
-
 class MuFsNode;
 
 /**
