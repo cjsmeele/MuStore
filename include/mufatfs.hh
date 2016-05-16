@@ -59,6 +59,23 @@ private:
     MuBlockStoreError getRootBlock(size_t blockNo, void **buffer);
     MuBlockStoreError getDataBlock(size_t blockNo, void **buffer);
 
+    /// Magic end-of-chain block value.
+    static const size_t BLOCK_EOC = ~0ULL;
+
+    inline size_t blockToCluster(size_t blockNo) const {
+        // Add the two reserved clusters.
+        return blockNo / clusterSize + 2;
+    }
+    inline size_t clusterToBlock(size_t clusterNo) const {
+        if (clusterNo < 2
+            || clusterNo > 0x0fffffef
+            || (subType == SubType::FAT16 && clusterNo > 0xffef)
+            || (subType == SubType::FAT12 && clusterNo > 0x0fef))
+            return BLOCK_EOC;
+        else
+            return (clusterNo - 2) * clusterSize;
+    }
+
     MuFsError getNodeBlock(MuFsNode &node, void **buffer);
     MuFsError incNodeBlock(MuFsNode &node);
 

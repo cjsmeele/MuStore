@@ -53,9 +53,9 @@ protected:
         bool directory
     );
 
-    void nodeUpdatePos(MuFsNode &node, size_t newPos);
+    void nodeUpdatePos(MuFsNode &node, size_t newPos) const;
 
-    void *getNodeContext(MuFsNode &node);
+    void *getNodeContext(MuFsNode &node) const;
 
 public:
             const char *getVolumeLabel() const { return volumeLabel; }

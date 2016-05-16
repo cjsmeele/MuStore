@@ -196,7 +196,14 @@ MuFsError MuFatFs::getNodeBlock(MuFsNode &node, void **buffer) {
         return MUFS_ERR_OK;
 
     } else {
-        return MUFS_ERR_OPER_UNAVAILABLE;
+        if (ctx->currentBlock == BLOCK_EOC)
+            return MUFS_EOF;
+
+        auto blockErr = getDataBlock(ctx->currentBlock, buffer);
+        if (blockErr)
+            return MUFS_ERR_IO;
+
+        return MUFS_ERR_OK;
     }
 }
 
@@ -204,10 +211,45 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 
     if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
-        ctx->currentBlock++; // No need for cluster magic.
+        ctx->currentBlock++; // No need for cluster magic! :D
         return MUFS_ERR_OK;
     } else {
-        return MUFS_ERR_OPER_UNAVAILABLE;
+        if ((ctx->currentBlock+1) % clusterSize) {
+            // We'll remain in the same cluster, no problemo.
+            ctx->currentBlock++;
+            return MUFS_ERR_OK;
+        } else {
+            // We need to find the next cluster.
+            void *buffer;
+            uint32_t clustersPerFatSector
+                = subType == SubType::FAT12
+                ? logicalSectorSize / 12
+                : subType == SubType::FAT16
+                ? logicalSectorSize / 16
+                : logicalSectorSize / 32;
+
+            size_t currentCluster = blockToCluster(ctx->currentBlock);
+            size_t nextCluster    = 0;
+
+            auto err = getFatBlock(currentCluster / clustersPerFatSector, &buffer);
+            if (err)
+                return MUFS_ERR_IO;
+
+            if (subType == SubType::FAT12) {
+                // XXX TODO.
+                return MUFS_ERR_OPER_UNAVAILABLE;
+
+            } else if (subType == SubType::FAT16) {
+                nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
+
+            } else if (subType == SubType::FAT32) {
+                nextCluster = ((uint32_t*)buffer)[currentCluster % clustersPerFatSector];
+            }
+
+            ctx->currentBlock = clusterToBlock(nextCluster);
+
+            return MUFS_ERR_OK;
+        }
     }
 }
 
@@ -221,7 +263,7 @@ MuFsNode MuFatFs::getRoot(MuFsError &err) {
     if (subType == SubType::FAT12 || subType == SubType::FAT16)
         ctx->startBlock = 0;
     else
-        ctx->startBlock = rootCluster * clusterSize;
+        ctx->startBlock = clusterToBlock(rootCluster);
 
     ctx->currentBlock = ctx->startBlock;
     ctx->currentEntry = 0;
@@ -282,8 +324,16 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     strncat(name, entry->extension, 3);
     trimName(name, 13);
 
+    auto child = makeNode(name, true, entry->attrDirectory);
+    NodeContext *childCtx = static_cast<NodeContext*>(getNodeContext(child));
+
+    uint32_t startCluster = ((uint32_t)entry->clusterNoHigh << 16) | entry->clusterNoLow;
+
+    childCtx->startBlock   = clusterToBlock(startCluster);
+    childCtx->currentBlock = childCtx->startBlock;
+
     err = MUFS_ERR_OK;
-    return makeNode(name, true, entry->attrDirectory);
+    return child;
 }
 
 // }}}
