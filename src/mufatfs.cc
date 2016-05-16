@@ -324,7 +324,8 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     strncat(name, entry->extension, 3);
     trimName(name, 13);
 
-    auto child = makeNode(name, true, entry->attrDirectory);
+    auto child = makeNode(name, true, entry->attrDirectory,
+                          entry->attrDirectory ? 0 : entry->fileSize);
     NodeContext *childCtx = static_cast<NodeContext*>(getNodeContext(child));
 
     uint32_t startCluster = ((uint32_t)entry->clusterNoHigh << 16) | entry->clusterNoLow;
@@ -340,8 +341,16 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
 
 // File I/O {{{
 MuFsError MuFatFs::seek (MuFsNode &file, size_t pos_) {
-    // TODO.
-    return MUFS_ERR_OPER_UNAVAILABLE;
+    if (pos_ == 0) {
+        NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(file));
+        ctx->currentBlock = ctx->startBlock;
+        ctx->currentEntry = 0;
+        nodeUpdatePos(file, pos_);
+        return MUFS_ERR_OK;
+    } else {
+        // TODO.
+        return MUFS_ERR_OPER_UNAVAILABLE;
+    }
 }
 MuFsError MuFatFs::read (MuFsNode &file, void *buffer, size_t size) {
     // TODO.

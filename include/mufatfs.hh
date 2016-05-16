@@ -80,8 +80,9 @@ private:
     MuFsError incNodeBlock(MuFsNode &node);
 
 public:
-    const char *getFsType() const { return "FAT"; }
+    const char *getFsType() const { return "FAT";   }
     SubType  getFsSubType() const { return subType; }
+    bool isCaseSensitive()  const { return false;   }
 
     // Directory operations {{{
     MuFsNode getRoot(MuFsError &err);

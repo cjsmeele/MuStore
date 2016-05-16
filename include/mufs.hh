@@ -50,7 +50,8 @@ protected:
     MuFsNode makeNode(
         const char *name,
         bool exists,
-        bool directory
+        bool directory,
+        size_t size = 0
     );
 
     void nodeUpdatePos(MuFsNode &node, size_t newPos) const;
@@ -60,6 +61,7 @@ protected:
 public:
             const char *getVolumeLabel() const { return volumeLabel; }
     virtual const char *getFsType()      const = 0;
+    virtual bool isCaseSensitive()       const { return true; }
 
     // Directory operations {{{
     virtual MuFsNode getRoot(MuFsError &err) = 0;

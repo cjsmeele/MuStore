@@ -10,12 +10,14 @@
 MuFsNode MuFs::makeNode(
     const char *name,
     bool exists,
-    bool directory
+    bool directory,
+    size_t size
 ) {
     MuFsNode node {*this};
     strncpy(node.name, name, node.MAX_NAME_LENGTH);
     node.exists    = exists;
     node.directory = directory;
+    node.size      = size;
 
     return node;
 }
@@ -62,19 +64,24 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
             root.rewind();
             return {*this};
         }
-        if (strlen(child.getName()) == partLength
-            && !strncmp(child.getName(), path, partLength)) {
-            // Hebbes. :D
+        if (strlen(child.getName()) == partLength) {
+            if (
+                (this->isCaseSensitive() && !strncmp(child.getName(), path, partLength))
+                ||
+                (!this->isCaseSensitive() && !strncasecmp(child.getName(), path, partLength))
+            ) {
+                // Hebbes. :D
 
-            root.rewind();
+                root.rewind();
 
-            if (strlen(nextPart)) {
-                // Gotta go deeper.
-                // Note: `child` may not be a directory - that's OK,
-                // it will be catched in the next call.
-                return getChild(child, nextPart, err);
-            } else {
-                return child;
+                if (strlen(nextPart)) {
+                    // Gotta go deeper.
+                    // Note: `child` may not be a directory - that's OK,
+                    // it will be catched in the next call.
+                    return getChild(child, nextPart, err);
+                } else {
+                    return child;
+                }
             }
         }
     }

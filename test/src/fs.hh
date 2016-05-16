@@ -138,3 +138,36 @@ TEST(large_root_readdir) {
         }
     }
 }
+
+TEST(get_file) {
+    MuFsError err;
+    auto file = fs->get("/dir2/subsub/zstuff.txt", err);
+    ASSERT(!err, "get() of file failed (err=%d)", err);
+    ASSERT(file.doesExist(), "get() file does not exist");
+    ASSERT(!file.isDirectory(), "get() file is a directory");
+    ASSERT(file.getSize(), "get() file has no size");
+    ASSERT(!strcmp(file.getName(), "ZSTUFF.TXT"),
+           "name of file should be 'ZSTUFF.TXT', is '%s'", file.getName());
+}
+
+TEST(get_dir) {
+    MuFsError err;
+    auto dir = fs->get("/dir2/subsub", err);
+    ASSERT(!err, "get() of directory failed (err=%d)", err);
+    ASSERT(dir.doesExist(), "get() directory does not exist");
+    ASSERT(dir.isDirectory(), "get() directory is not a directory");
+    ASSERT(!strcmp(dir.getName(), "SUBSUB"),
+           "name of dir should be 'SUBSUB', is '%s'", dir.getName());
+
+    auto file = dir.get("stuff.txt", err);
+    ASSERT(!err, "get() within directory failed (err=%d)", err);
+    ASSERT(file.doesExist(), "get() file in directory does not exist");
+
+    auto child = dir.readDir(err);
+    ASSERT(!err, "readDir() on get() directory failed (err=%d)", err);
+    ASSERT(child.doesExist(), "readDir() on get() directory returned non-existent child");
+}
+
+// TEST(large_file_read) {
+//     ASSERT(false, "unimplemented");
+// }
