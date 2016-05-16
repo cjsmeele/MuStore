@@ -2,11 +2,25 @@
 
 ## Introduction ##
 
-MuStore is a modular platform-independant block storage driver.
+MuStore is a modular platform-independent C++ block storage driver.
 
-## Further documentation ##
+The primary development target for this project is the
+[Arduino Due](https://www.arduino.cc/en/Main/ArduinoBoardDue).
 
-See *[some doxygen page that has yet to be created]*.
+## Description ##
+
+**TODO**
+
+## Included modules ##
+
+### Block storage backends ###
+
+- Memory backend.
+- File backend (using cstdio).
+
+### Filesystem backends ###
+
+- (WIP) A generic FAT driver with support for FAT12, FAT16 and FAT32.
 
 ## Author ##
 
