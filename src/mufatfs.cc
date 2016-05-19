@@ -7,6 +7,7 @@
 #include "mufatfs.hh"
 
 #include <cstring>
+#include <algorithm>
 
 // We distinguish FAT types using the number of clusters.
 // Source: http://www.win.tue.nl/~aeb/linux/fs/fat/fat-1.html
@@ -236,7 +237,6 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
                 return MUFS_ERR_IO;
 
             if (subType == SubType::FAT12) {
-                // XXX TODO.
                 return MUFS_ERR_OPER_UNAVAILABLE;
 
             } else if (subType == SubType::FAT16) {
@@ -340,25 +340,83 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
 // }}}
 
 // File I/O {{{
-MuFsError MuFatFs::seek (MuFsNode &file, size_t pos_) {
+MuFsError MuFatFs::seek (MuFsNode &node, size_t pos_) {
+    if (!node.doesExist())
+        return MUFS_ERR_OBJECT_NOT_FOUND;
+
     if (pos_ == 0) {
-        NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(file));
+        NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
         ctx->currentBlock = ctx->startBlock;
         ctx->currentEntry = 0;
-        nodeUpdatePos(file, pos_);
+        nodeUpdatePos(node, pos_);
         return MUFS_ERR_OK;
     } else {
         // TODO.
+        // Only support rewinds for now.
         return MUFS_ERR_OPER_UNAVAILABLE;
     }
 }
-MuFsError MuFatFs::read (MuFsNode &file, void *buffer, size_t size) {
-    // TODO.
-    return MUFS_ERR_OPER_UNAVAILABLE;
+
+size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
+
+    if (!file.doesExist()) {
+        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        return 0;
+    } else if (file.isDirectory()) {
+        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        return 0;
+    }
+
+    size_t bytesRead = 0;
+    void *buffer;
+
+    if (file.getPos() >= file.getSize()) {
+        err = MUFS_EOF;
+        return 0;
+    }
+
+    while (bytesRead < size) {
+        err = getNodeBlock(file, &buffer);
+        if (err)
+            return bytesRead;
+
+        size_t sectorOffset = file.getPos() % logicalSectorSize;
+        size_t toCopy = std::min({
+            (size_t)(size - bytesRead),               // Requested read size.
+            (size_t)(file.getSize() - file.getPos()), // Remaining file size.
+            (size_t)logicalSectorSize - sectorOffset  // Remaining bytes in current sector.
+        });
+
+        memcpy(
+            (uint8_t*)dest   + bytesRead,
+            (uint8_t*)buffer + sectorOffset,
+            toCopy
+        );
+
+        bytesRead += toCopy;
+
+        if ((file.getPos() % logicalSectorSize + toCopy) == logicalSectorSize) {
+            err = incNodeBlock(file);
+            if (err)
+                return bytesRead;
+        }
+
+        nodeUpdatePos(file, file.getPos() + toCopy);
+
+        if (file.getPos() >= file.getSize() && size - bytesRead > 0) {
+            // EOF reached before the requested amount of bytes could be read.
+            err = MUFS_EOF;
+            return bytesRead;
+        }
+    }
+
+    err = MUFS_ERR_OK;
+    return bytesRead;
 }
-MuFsError MuFatFs::write(MuFsNode &file, const void *buffer, size_t size) {
+size_t MuFatFs::write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err) {
     // TODO.
-    return MUFS_ERR_OPER_UNAVAILABLE;
+    err = MUFS_ERR_OPER_UNAVAILABLE;
+    return 0;
 }
 // }}}
 

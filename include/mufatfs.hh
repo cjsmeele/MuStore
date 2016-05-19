@@ -90,9 +90,9 @@ public:
     // }}}
 
     // File I/O {{{
-    MuFsError seek (MuFsNode &file, size_t pos_);
-    MuFsError read (MuFsNode &file, void *buffer, size_t size);
-    MuFsError write(MuFsNode &file, const void *buffer, size_t size);
+    MuFsError seek (MuFsNode &node, size_t pos_);
+    size_t read (MuFsNode &file,       void *buffer, size_t size, MuFsError &err);
+    size_t write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err);
     // }}}
 
     MuFatFs(MuBlockStore &store_);

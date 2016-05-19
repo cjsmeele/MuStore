@@ -38,22 +38,6 @@ TEST(metadata) {
            "volume label should be 'MUSTORETEST', is '%s'", fs->getVolumeLabel());
 }
 
-TEST(node_get) {
-    MuFsError err;
-    auto dir = fs->getRoot(err);
-    ASSERT(!err, "getRoot() failed (err=%d)", err);
-
-    // WIP.
-}
-
-TEST(file_read) {
-    MuFsError err;
-    auto dir = fs->getRoot(err);
-    ASSERT(!err, "getRoot() failed (err=%d)", err);
-
-    // WIP.
-}
-
 TEST(root_readdir) {
     MuFsError err;
     auto root = fs->getRoot(err);
@@ -168,6 +152,70 @@ TEST(get_dir) {
     ASSERT(child.doesExist(), "readDir() on get() directory returned non-existent child");
 }
 
-// TEST(large_file_read) {
-//     ASSERT(false, "unimplemented");
-// }
+TEST(file_read) {
+    MuFsError err;
+    auto file = fs->get("/test.txt", err);
+    ASSERT(!err, "get() of file '/test.txt' failed (err=%d)", err);
+
+    const std::string expected = "Hello world\n"; // A 12 byte on disk.
+    char buffer[32]  = { };
+    char *p          = buffer;
+    size_t totalRead = 0;
+    const size_t atATime = 5;
+
+    while (totalRead < expected.length()) {
+        size_t bytesRead = file.read(p, atATime, err);
+        if (err == MUFS_EOF) {
+            ASSERT(bytesRead + totalRead == expected.length(),
+                   "got unexpected EOF at %lu/%lu bytes",
+                   bytesRead + totalRead, expected.length());
+        } else {
+            ASSERT(!err, "read() of file '/test.txt' failed (err=%d)", err);
+        }
+
+        if (bytesRead != atATime) {
+            ASSERT(err == MUFS_EOF,
+                   "read() returned %lu bytes instead of %lu",
+                   bytesRead, atATime);
+        }
+
+        p         += bytesRead;
+        totalRead += bytesRead;
+    }
+
+    ASSERT(!strncmp(expected.c_str(), buffer, expected.length()),
+           "read string '%s' does not equal file contents",
+          buffer);
+}
+
+
+TEST(large_file_read) {
+    MuFsError err;
+    FILE *fileRef = fopen("testfs_large/rtdir100/huge.txt", "r");
+    ASSERT(fileRef, "fopen() failed: %s", strerror(errno));
+    MuFsNode fileMu = fs->get("/rtdir100/huge.txt", err);
+    ASSERT(!err, "get() of file '/rtdir100/huge.txt' failed (err=%d)", err);
+
+    const size_t atATime = 13;
+    char bufferMu[atATime]  = { };
+    char bufferRef[atATime] = { };
+
+    while (true) {
+        size_t bytesReadRef = fread(bufferRef, 1, atATime, fileRef);
+        size_t bytesReadMu  = fileMu.read(bufferMu, atATime, err);
+
+        ASSERT(bytesReadRef == bytesReadMu,
+               "fread and MuFsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
+               bytesReadRef, bytesReadMu);
+
+        ASSERT(!memcmp(bufferRef, bufferMu, bytesReadRef),
+               "read bytes from stdio and Mu are unequal");
+
+        if (err == MUFS_EOF) {
+            ASSERT(feof(fileRef), "unexpected EOF on read()");
+            break;
+        } else {
+            ASSERT(!feof(fileRef), "expected EOF on read(), didn't get it");
+        }
+    }
+}

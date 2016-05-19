@@ -74,8 +74,8 @@ public:
 
     // File I/O {{{
     virtual MuFsError seek (MuFsNode &file, size_t pos_) = 0;
-    virtual MuFsError read (MuFsNode &file, void *buffer, size_t size) = 0;
-    virtual MuFsError write(MuFsNode &file, const void *buffer, size_t size) = 0;
+    virtual size_t read (MuFsNode &file,       void *buffer, size_t size, MuFsError &err) = 0;
+    virtual size_t write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err) = 0;
     // }}}
 
     MuFs(MuBlockStore &store_)

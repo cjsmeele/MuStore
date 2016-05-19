@@ -14,12 +14,12 @@ MuFsError MuFsNode::seek(size_t pos_) {
     return fs.seek(*this, pos_);
 }
 
-MuFsError MuFsNode::read (void *buffer, size_t size_) {
-    return fs.read(*this, buffer, size_);
+size_t MuFsNode::read(void *buffer, size_t size_, MuFsError &err) {
+    return fs.read(*this, buffer, size_, err);
 }
 
-MuFsError MuFsNode::write(const void *buffer, size_t size_) {
-    return fs.write(*this, buffer, size_);
+size_t MuFsNode::write(const void *buffer, size_t size_, MuFsError &err) {
+    return fs.write(*this, buffer, size_, err);
 }
 
 MuFsNode MuFsNode::readDir(MuFsError &err) {

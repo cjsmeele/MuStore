@@ -41,8 +41,8 @@ protected:
 public:
     bool doesExist()      const { return exists;    }
     bool isDirectory()    const { return directory; }
-    bool getSize()        const { return size;      }
-    bool getPos()         const { return pos;       }
+    size_t getSize()      const { return size;      }
+    size_t getPos()       const { return pos;       }
     const char *getName() const { return name;      }
 
     // Proxy functions {{{
@@ -51,8 +51,8 @@ public:
     MuFsError seek(size_t pos_);
     MuFsError rewind() { return seek(0); };
 
-    MuFsError read (void *buffer, size_t size_);
-    MuFsError write(const void *buffer, size_t size_);
+    size_t read (void *buffer, size_t size, MuFsError &err);
+    size_t write(const void *buffer, size_t size, MuFsError &err);
 
     MuFsNode readDir(MuFsError &err);
     // }}}
