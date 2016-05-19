@@ -18,6 +18,37 @@ TEST(fat_subtype) {
            "fat subtype must be FAT12, is %d", fs_.getFsSubType());
 }
 
+TEST(file_read_larger) {
+    MuFsError err;
+    FILE *fileRef = fopen("testfs/huge.txt", "r");
+    ASSERT(fileRef, "fopen() failed: %s", strerror(errno));
+    MuFsNode fileMu = fs->get("/huge.txt", err);
+    ASSERT(!err, "get() of file '/huge.txt' failed (err=%d)", err);
+
+    const size_t atATime = 59;
+    char bufferMu[atATime]  = { };
+    char bufferRef[atATime] = { };
+
+    while (true) {
+        size_t bytesReadRef = fread(bufferRef, 1, atATime, fileRef);
+        size_t bytesReadMu  = fileMu.read(bufferMu, atATime, err);
+
+        ASSERT(bytesReadRef == bytesReadMu,
+               "fread and MuFsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
+               bytesReadRef, bytesReadMu);
+
+        ASSERT(!memcmp(bufferRef, bufferMu, bytesReadRef),
+               "read bytes from stdio and Mu are unequal");
+
+        if (err == MUFS_EOF) {
+            ASSERT(feof(fileRef), "unexpected EOF on read()");
+            break;
+        } else {
+            ASSERT(!feof(fileRef), "expected EOF on read(), didn't get it");
+        }
+    }
+}
+
 TEST_MAIN() {
     TEST_START();
 
@@ -33,6 +64,7 @@ TEST_MAIN() {
     TEST_FS_WITH(MuFatFs(store), get_file);
     TEST_FS_WITH(MuFatFs(store), get_dir);
     TEST_FS_WITH(MuFatFs(store), file_read);
+    TEST_FS_WITH(MuFatFs(store), file_read_larger);
 
     // WIP.
 

@@ -221,29 +221,53 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
             return MUFS_ERR_OK;
         } else {
             // We need to find the next cluster.
-            void *buffer;
-            uint32_t clustersPerFatSector
-                = subType == SubType::FAT12
-                ? logicalSectorSize / 1 // XXX
-                : subType == SubType::FAT16
-                ? logicalSectorSize / 2
-                : logicalSectorSize / 4;
-
             size_t currentCluster = blockToCluster(ctx->currentBlock);
             size_t nextCluster    = 0;
-
-            auto err = getFatBlock(currentCluster / clustersPerFatSector, &buffer);
-            if (err)
-                return MUFS_ERR_IO;
+            void  *buffer;
 
             if (subType == SubType::FAT12) {
-                return MUFS_ERR_OPER_UNAVAILABLE;
+                // Ugh.
 
-            } else if (subType == SubType::FAT16) {
-                nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
+                size_t byteOff = currentCluster * 3 / 2; // N 1-and-a-half bytes.
 
-            } else if (subType == SubType::FAT32) {
-                nextCluster = ((uint32_t*)buffer)[currentCluster % clustersPerFatSector];
+                auto err = getFatBlock(byteOff / logicalSectorSize, &buffer);
+                if (err)
+                    return MUFS_ERR_IO;
+
+                nextCluster |=
+                    currentCluster & 1
+                    ? ((uint8_t*)buffer)[byteOff % 512] >> 4
+                    : ((uint8_t*)buffer)[byteOff % 512];
+
+                byteOff++;
+
+                // It seems FAT12 cluster numbers can be spread over multiple FAT sectors.
+                // I do not like this.
+                err = getFatBlock(byteOff / logicalSectorSize, &buffer);
+                if (err)
+                    return MUFS_ERR_IO;
+
+                nextCluster |=
+                    currentCluster & 1
+                    ? (uint32_t)((uint8_t*)buffer)[byteOff % 512] << 4
+                    : ((uint32_t)((uint8_t*)buffer)[byteOff % 512] & 0x0f) << 8;
+
+            } else {
+                // Yay.
+                uint32_t clustersPerFatSector =
+                    subType == SubType::FAT16
+                    ? logicalSectorSize / 2
+                    : logicalSectorSize / 4;
+
+                auto err = getFatBlock(currentCluster / clustersPerFatSector, &buffer);
+                if (err)
+                    return MUFS_ERR_IO;
+
+                if (subType == SubType::FAT16) {
+                    nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
+                } else if (subType == SubType::FAT32) {
+                    nextCluster = ((uint32_t*)buffer)[currentCluster % clustersPerFatSector];
+                }
             }
 
             ctx->currentBlock = clusterToBlock(nextCluster);
@@ -256,6 +280,11 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
 // Directory operations {{{
 
 MuFsNode MuFatFs::getRoot(MuFsError &err) {
+    if (subType == SubType::NONE) {
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return {*this};
+    }
+
     err = MUFS_ERR_OK;
     auto node = makeNode("/", true, true);
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
@@ -272,6 +301,11 @@ MuFsNode MuFatFs::getRoot(MuFsError &err) {
 }
 
 MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
+    if (subType == SubType::NONE) {
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return {*this};
+    }
+
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(parent));
 
     if (!parent.doesExist()) {
@@ -341,6 +375,9 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
 
 // File I/O {{{
 MuFsError MuFatFs::seek (MuFsNode &node, size_t pos_) {
+    if (subType == SubType::NONE)
+        return MUFS_ERR_OPER_UNAVAILABLE;
+
     if (!node.doesExist())
         return MUFS_ERR_OBJECT_NOT_FOUND;
 
@@ -358,12 +395,16 @@ MuFsError MuFatFs::seek (MuFsNode &node, size_t pos_) {
 }
 
 size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
+    if (subType == SubType::NONE) {
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return 0;
+    }
 
     if (!file.doesExist()) {
         err = MUFS_ERR_OBJECT_NOT_FOUND;
         return 0;
     } else if (file.isDirectory()) {
-        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        err = MUFS_ERR_NOT_FILE;
         return 0;
     }
 
@@ -414,6 +455,11 @@ size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
     return bytesRead;
 }
 size_t MuFatFs::write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err) {
+    if (subType == SubType::NONE) {
+        err = MUFS_ERR_OPER_UNAVAILABLE;
+        return 0;
+    }
+
     // TODO.
     err = MUFS_ERR_OPER_UNAVAILABLE;
     return 0;

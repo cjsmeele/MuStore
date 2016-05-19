@@ -20,7 +20,7 @@ The primary development target for this project is the
 
 ### Filesystem backends ###
 
-- (WIP) A generic FAT driver with support for FAT12, FAT16 and FAT32.
+- A (currently read-only) generic FAT driver with support for FAT12, FAT16 and FAT32.
 
 ## Author ##
 

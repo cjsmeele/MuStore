@@ -47,6 +47,7 @@ TEST(root_readdir) {
         "DIR1",
         "DIR2",
         "TEST.TXT",
+        "HUGE.TXT",
     };
 
     size_t i = 0;
