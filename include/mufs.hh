@@ -44,8 +44,13 @@ protected:
     /**
      * \brief A node factory for our subclasses.
      *
-     * We act as a trusted party of MuFsNode to them (actually me and
-     * MuFsNode are BFFs, but don't tell anyone ;).
+     * \param name a node basename (not an absolute path).
+     *        A copy of this string will be stored in the node. If the
+     *        name exceeds MuFsNode::MAX_NAME_LENGTH, it will be
+     *        trimmed.
+     * \param exists
+     * \param directory whether this is a directory
+     * \param size a file size in bytes (not applicable for directories)
      */
     MuFsNode makeNode(
         const char *name,
@@ -54,31 +59,159 @@ protected:
         size_t size = 0
     );
 
+    /// Update the position of the provided node.
     void nodeUpdatePos(MuFsNode &node, size_t newPos) const;
 
+    /// Get a pointer to the nodeContext member of the provided node.
     void *getNodeContext(MuFsNode &node) const;
 
 public:
+    /// Get a label describing this filesystem. May be an empty string.
             const char *getVolumeLabel() const { return volumeLabel; }
+
+    /// Get the type of FS implementation used (e.g. "FAT").
     virtual const char *getFsType()      const = 0;
+
+    /// \brief Check whether filenames are case-sensitive in this filesystem.
+    ///
+    /// If false, get() and getChild() will behave accordingly.
     virtual bool isCaseSensitive()       const { return true; }
 
-    // Directory operations {{{
+    /// \todo createFile, createDir, getParent, move, delete, ...
+
+    /// \name Directory operations
+    /// @{
+
+    /**
+     * \brief Get the root node of this filesystem.
+     *
+     * The returned node will be a directory.
+     *
+     * \param[out] err one of:
+     * - \ref MUFS_ERR_OK
+     * - \ref MUFS_ERR_IO
+     * - \ref MUFS_ERR_OPER_UNAVAILABLE
+     */
     virtual MuFsNode getRoot(MuFsError &err) = 0;
+
+    /**
+     * \brief Recursively get a node starting at the given directory.
+     *
+     * \param[in]  root the directory node from which to search
+     * \param[in]  path a path relative to the given root node.
+     *             Note: `..` and `.` will not work in paths
+     * \param[out] err one of:
+     *   - \ref MUFS_ERR_OK
+     *   - \ref MUFS_ERR_IO
+     *   - \ref MUFS_ERR_OPER_UNAVAILABLE
+     *   - \ref MUFS_ERR_NOT_DIRECTORY
+     *   - \ref MUFS_ERR_OBJECT_NOT_FOUND
+     *
+     * \return the queried child node if successful, a non-existent node otherwise (check `err`).
+     *
+     * \sa get()
+     */
     virtual MuFsNode getChild(MuFsNode &root, const char *path, MuFsError &err);
+
+    /**
+     * \brief Recursively get a node using an absolute path.
+     *
+     * \param[in]  path an absolute path (`..` and `.` will not work here)
+     * \param[out] err one of:
+     *   - \ref MUFS_ERR_OK
+     *   - \ref MUFS_ERR_IO
+     *   - \ref MUFS_ERR_OPER_UNAVAILABLE
+     *   - \ref MUFS_ERR_NOT_DIRECTORY
+     *   - \ref MUFS_ERR_OBJECT_NOT_FOUND
+     *
+     * \return the queried node if successful, a non-existent node otherwise (check `err`).
+     *
+     * \sa getChild()
+     */
     virtual MuFsNode get(const char *path, MuFsError &err);
+
+    /**
+     * \brief Read the next node entry from a directory.
+     *
+     * \param[in]  parent the directory to read
+     * \param[out] err one of:
+     *   - \ref MUFS_ERR_OK
+     *   - \ref MUFS_ERR_IO
+     *   - \ref MUFS_ERR_OPER_UNAVAILABLE
+     *   - \ref MUFS_ERR_OBJECT_NOT_FOUND
+     *   - \ref MUFS_ERR_NOT_DIRECTORY
+     *
+     * \return a child node if successful, a non-existent node otherwise (check `err`).
+     */
     virtual MuFsNode readDir(MuFsNode &parent, MuFsError &err) = 0;
-    // }}}
 
-    // TODO: createDir, deleteDir, createFile, deleteFile, move, getParent...
+    /// @}
 
-    // File I/O {{{
-    virtual MuFsError seek (MuFsNode &file, size_t pos_) = 0;
-    virtual size_t read (MuFsNode &file,       void *buffer, size_t size, MuFsError &err) = 0;
+    /// \name File I/O
+    /// @{
+
+    /**
+     * \brief Seek in a file or directory.
+     *
+     * \param node the node to seek in, can be either a file or directory
+     * \param pos_ the position to seek to. A byte number for files, a directory index number for directories.
+     *
+     * \retval MUFS_ERR_OK
+     * \retval MUFS_ERR_IO
+     * \retval MUFS_ERR_OPER_UNAVAILABLE
+     * \retval MUFS_ERR_OBJECT_NOT_FOUND
+     */
+    virtual MuFsError seek(MuFsNode &node, size_t pos_) = 0;
+
+    /**
+     * \brief Read some bytes from a file node.
+     *
+     * \param[in]    file the file to read from
+     * \param[inout] buffer the buffer to read into
+     * \param[in]    size the amount of bytes to read
+     * \param[out]   err one of:
+     *   - \ref MUFS_ERR_OK
+     *   - \ref MUFS_ERR_IO
+     *   - \ref MUFS_EOF
+     *   - \ref MUFS_ERR_OPER_UNAVAILABLE
+     *   - \ref MUFS_ERR_OBJECT_NOT_FOUND
+     *   - \ref MUFS_ERR_NOT_FILE
+     *
+     * \return the amount of bytes actually read. Will be lower than
+     *         `size` on error or EOF, check `err`!
+     */
+    virtual size_t read (MuFsNode &file, void *buffer, size_t size, MuFsError &err) = 0;
+
+    /**
+     * \brief Write some bytes to a file node.
+     *
+     * \param[in]   file the file to write to
+     * \param[in]   buffer the buffer to write from
+     * \param[in]   size the amount of bytes to write
+     * \param[out]  err one of:
+     *   - \ref MUFS_ERR_OK
+     *   - \ref MUFS_ERR_IO
+     *   - \ref MUFS_ERR_NO_SPACE
+     *   - \ref MUFS_ERR_OPER_UNAVAILABLE
+     *   - \ref MUFS_ERR_OBJECT_NOT_FOUND
+     *   - \ref MUFS_ERR_NOT_FILE
+     *
+     * \return the amount of bytes actually written. Will be lower
+     *         than `size` on error, check `err`!
+     */
     virtual size_t write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err) = 0;
-    // }}}
 
+    /// @}
+
+    /**
+     * \brief MuFs constructor.
+     *
+     * A MuFs needs a block storage backend.
+     *
+     * \param store_ the storage backend to use for this filesystem
+     */
     MuFs(MuBlockStore &store_)
         : store(store_) { }
+
     virtual ~MuFs() = default;
 };

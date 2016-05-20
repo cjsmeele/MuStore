@@ -24,6 +24,9 @@ enum MuBlockStoreError : int {
 
 /**
  * \brief MuBlockStore generic block storage class.
+ *
+ * This class provides an interface for any type of storage that
+ * supports seeking and reading / writing in chunks.
  */
 class MuBlockStore {
 
@@ -36,40 +39,97 @@ protected:
     // }}}
 
 public:
-    // Accessors {{{
+    /// \name Accessors
+    /// @{
+
+    /// Get the backend block size in bytes.
     size_t getBlockSize()  const { return blockSize;  }
+
+    /// Get the amount of addressable blocks.
     size_t getBlockCount() const { return blockCount; }
+
+    /// Check whether writes are permitted to this medium.
     bool   isWritable()    const { return writable;   }
+
+    /// Get the current position as a LBA.
     size_t getPos()        const { return pos;        }
-    // }}}
 
-    // I/O {{{
-    virtual MuBlockStoreError seek(size_t blockN) = 0;
-    virtual MuBlockStoreError rewind() { return seek(0); }
+    /// @}
 
-    virtual MuBlockStoreError read (void *buffer) = 0;
-    virtual MuBlockStoreError write(const void *buffer) = 0;
+    /// \name I/O Operations
+    /// @{
 
     /**
-     * \brief Shortcut for a seek + read operation.
+     * \brief Seek to the specified block address.
+     *
+     * \param lba The block number to seek to.
+     *
+     * \retval MUBLOCKSTORE_ERR_OK
+     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when seeking to or past getBlockCount()
+     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
      */
-    MuBlockStoreError read (size_t blockN, void *buffer) {
-        MuBlockStoreError err = seek(blockN);
+    virtual MuBlockStoreError seek(size_t lba) = 0;
+
+    /// Seek to the starting address.
+    virtual MuBlockStoreError rewind() { return seek(0); }
+
+    /**
+     * \brief Read a single block from the current \ref pos "position"
+     *        into the specified buffer.
+     *
+     * The \ref pos "position" is increased by one block after succesful completion.
+     *
+     * \warning The caller must make sure the buffer can hold at least
+     * the amount of bytes specified by getBlockSize().
+     *
+     * \param buffer the destination buffer
+     *
+     * \retval MUBLOCKSTORE_ERR_OK
+     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when reading past getBlockCount()
+     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
+     */
+    virtual MuBlockStoreError read (void *buffer) = 0;
+
+    /**
+     * \brief Write a single block from the specified buffer to the
+     *        current \ref pos "position".
+     *
+     * The \ref pos "position" is increased by one block after succesful completion.
+     *
+     * \warning The caller must make sure the buffer holds at least
+     * the amount of bytes specified by getBlockSize().
+     *
+     * \param buffer the source buffer
+     *
+     * \retval MUBLOCKSTORE_ERR_OK
+     * \retval MUBLOCKSTORE_ERR_NOT_WRITABLE when attempting to write to a read-only medium (check isWritable() first)
+     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when writing past getBlockCount()
+     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
+     */
+    virtual MuBlockStoreError write(const void *buffer) = 0;
+
+    /// @}
+
+    /// \name I/O Convenience Functions
+    /// @{
+
+    /// Shortcut for a seek() + read() operation. Returns the first error if any.
+    virtual MuBlockStoreError read (size_t lba, void *buffer) {
+        MuBlockStoreError err = seek(lba);
         if (!err)
             err = read(buffer);
         return err;
     }
 
-    /**
-     * \brief Shortcut for a seek + write operation.
-     */
-    MuBlockStoreError write(size_t blockN, const void *buffer) {
-        MuBlockStoreError err = seek(blockN);
+    /// Shortcut for a seek() + write() operation. Returns the first error if any.
+    virtual MuBlockStoreError write(size_t lba, const void *buffer) {
+        MuBlockStoreError err = seek(lba);
         if (!err)
             err = write(buffer);
         return err;
     }
-    // }}}
+
+    /// @}
 
     MuBlockStore(size_t blockSize_ = 512, size_t blockCount_ = 0, bool writable_ = false)
         : blockSize(blockSize_),

@@ -81,20 +81,38 @@ private:
 
 public:
     const char *getFsType() const { return "FAT";   }
+
+    /**
+     * \brief Get the 'subtype' of this FAT filesystem
+     *
+     * \retval SubType::NONE for unrecognized filesystems
+     * \retval SubType::FAT12
+     * \retval SubType::FAT16
+     * \retval SubType::FAT32
+     */
     SubType  getFsSubType() const { return subType; }
+
+    /**
+     * \brief Check whether this FS is case sensitive.
+     *
+     * FAT is case insensitive.
+     *
+     * \return false
+     */
     bool isCaseSensitive()  const { return false;   }
 
-    // Directory operations {{{
     MuFsNode getRoot(MuFsError &err);
     MuFsNode readDir(MuFsNode &parent, MuFsError &err);
-    // }}}
 
-    // File I/O {{{
     MuFsError seek (MuFsNode &node, size_t pos_);
     size_t read (MuFsNode &file,       void *buffer, size_t size, MuFsError &err);
     size_t write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err);
-    // }}}
 
+    /**
+     * \brief MuFatFs constructor.
+     *
+     * \param store_ the storage backend to use
+     */
     MuFatFs(MuBlockStore &store_);
     ~MuFatFs() = default;
 };

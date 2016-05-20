@@ -5,7 +5,7 @@
  * \license   LGPLv3+, see LICENSE
  */
 
-/// For 64-bit ftell(). This is not portable outside of *nix platforms.
+/// For 64-bit fseeko()/ftello(). Note: this is not portable outside of *nix platforms.
 #define _FILE_OFFSET_BITS 64
 
 #include "mufileblockstore.hh"
@@ -17,18 +17,18 @@ void MuFileBlockStore::close() {
     }
 }
 
-MuBlockStoreError MuFileBlockStore::seek(size_t blockN) {
+MuBlockStoreError MuFileBlockStore::seek(size_t lba) {
     if (!fh)
         return MUBLOCKSTORE_ERR_IO;
-    if (blockN >= blockCount)
+    if (lba >= blockCount)
         return MUBLOCKSTORE_ERR_OUT_OF_BOUNDS;
 
-    if (fseeko(fh, (off_t)(blockN * blockSize), SEEK_SET)) {
+    if (fseeko(fh, (off_t)(lba * blockSize), SEEK_SET)) {
         close();
         return MUBLOCKSTORE_ERR_IO;
     }
 
-    pos = blockN;
+    pos = lba;
 
     return MUBLOCKSTORE_ERR_OK;
 }

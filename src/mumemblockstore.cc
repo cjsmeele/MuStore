@@ -7,11 +7,11 @@
 #include "mumemblockstore.hh"
 #include <cstring>
 
-MuBlockStoreError MuMemBlockStore::seek(size_t blockN) {
-    if (blockN >= blockCount)
+MuBlockStoreError MuMemBlockStore::seek(size_t lba) {
+    if (lba >= blockCount)
         return MUBLOCKSTORE_ERR_OUT_OF_BOUNDS;
 
-    pos = blockN;
+    pos = lba;
 
     return MUBLOCKSTORE_ERR_OK;
 }

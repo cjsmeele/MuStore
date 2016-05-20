@@ -32,12 +32,20 @@ void *MuFs::getNodeContext(MuFsNode &node) const {
 
 MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
 
+    if (!root.isDirectory()) {
+        err = MUFS_ERR_NOT_DIRECTORY;
+        // Return a new non-existent node on failure.
+        return {*this};
+    }
+
     // Trim leading slashes.
     while (path[0] == '/')
         path++;
 
-    if (strlen(path) == 0)
+    if (strlen(path) == 0) {
+        err = MUFS_ERR_OK;
         return root;
+    }
 
     const char *nextPart = strchr(path, '/');
     if (!nextPart)
@@ -49,10 +57,8 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
     // path[0..^partLength].
 
     err = root.rewind();
-    if (err) {
-        // Return a new non-existant node on failure.
+    if (err)
         return {*this};
-    }
 
     while (true) {
         MuFsNode child = readDir(root, err);
@@ -75,11 +81,15 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
                 root.rewind();
 
                 if (strlen(nextPart)) {
-                    // Gotta go deeper.
-                    // Note: `child` may not be a directory - that's OK,
-                    // it will be catched in the next call.
-                    return getChild(child, nextPart, err);
+                    if (child.isDirectory()) {
+                        // Gotta go deeper.
+                        return getChild(child, nextPart, err);
+                    } else {
+                        err = MUFS_ERR_OBJECT_NOT_FOUND;
+                        return {*this};
+                    }
                 } else {
+                    err = MUFS_ERR_OK;
                     return child;
                 }
             }

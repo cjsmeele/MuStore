@@ -16,9 +16,9 @@ static const size_t FAT16_MAX_CLUSTER_COUNT = 65524;
 // If the number of clusters is greater than the maximum for FAT16, FAT32 is assumed.
 
 struct NodeContext {
-    size_t startBlock;   ///< Relative to FAT region (fatLba / rootLba / dataLba)
+    size_t startBlock;   ///< Relative to FAT region (fatLba / rootLba / dataLba).
     size_t currentBlock; ///< .
-    size_t currentEntry; ///< Byte for files, direntry for directories.
+    size_t currentEntry; ///< Current direntry, only used for directories.
 };
 static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
               "FS context size exceeds reserved space in MuFsNode type"
@@ -374,7 +374,7 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
 // }}}
 
 // File I/O {{{
-MuFsError MuFatFs::seek (MuFsNode &node, size_t pos_) {
+MuFsError MuFatFs::seek(MuFsNode &node, size_t pos_) {
     if (subType == SubType::NONE)
         return MUFS_ERR_OPER_UNAVAILABLE;
 
