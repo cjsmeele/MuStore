@@ -30,6 +30,30 @@ void *MuFs::getNodeContext(MuFsNode &node) const {
     return node.fsContext;
 }
 
+#if !defined(_DEFAULT_SOURCE) && !defined(_BSD_SOURCE)
+// There is no strncasecmp function defined on this platform, we will
+// provide our own.
+
+inline static char _lc(char c) {
+    return (char)(c >= 'A' && c <= 'Z'
+                  ? c + 'a' - 'A'
+                  : c);
+}
+
+static int strncasecmp(const char *s1, const char *s2, size_t n) throw() {
+
+    for (size_t i = 0; i < n && s1; i++, s1++, s2++) {
+        char a = _lc(*s1);
+        char b = _lc(*s2);
+
+        if (a != b)
+            return a < b ? -1 : 1;
+    }
+    return 0;
+}
+
+#endif /* !defined(_DEFAULT_SOURCE) && !defined(_BSD_SOURCE) */
+
 MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
 
     if (!root.isDirectory()) {

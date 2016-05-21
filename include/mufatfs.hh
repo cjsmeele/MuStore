@@ -60,7 +60,7 @@ private:
     MuBlockStoreError getDataBlock(size_t blockNo, void **buffer);
 
     /// Magic end-of-chain block value.
-    static const size_t BLOCK_EOC = ~0ULL;
+    static const size_t BLOCK_EOC = ~(size_t)0ULL;
 
     inline size_t blockToCluster(size_t blockNo) const {
         // Add the two reserved clusters.
