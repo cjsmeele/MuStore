@@ -13,7 +13,7 @@ MuFsNode MuFs::makeNode(
     bool directory,
     size_t size
 ) {
-    MuFsNode node {*this};
+    MuFsNode node {this};
     strncpy(node.name, name, node.MAX_NAME_LENGTH);
     node.exists    = exists;
     node.directory = directory;
@@ -42,12 +42,14 @@ inline static char _lc(char c) {
 
 static int strncasecmp(const char *s1, const char *s2, size_t n) throw() {
 
-    for (size_t i = 0; i < n && s1; i++, s1++, s2++) {
+    for (size_t i = 0; i < n; i++, s1++, s2++) {
         char a = _lc(*s1);
         char b = _lc(*s2);
 
         if (a != b)
             return a < b ? -1 : 1;
+        if (!a)
+            break;
     }
     return 0;
 }
@@ -59,7 +61,7 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
     if (!root.isDirectory()) {
         err = MUFS_ERR_NOT_DIRECTORY;
         // Return a new non-existent node on failure.
-        return {*this};
+        return {this};
     }
 
     // Trim leading slashes.
@@ -82,7 +84,7 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
 
     err = root.rewind();
     if (err)
-        return {*this};
+        return {this};
 
     while (true) {
         MuFsNode child = readDir(root, err);
@@ -92,7 +94,7 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
                 err = MUFS_ERR_OBJECT_NOT_FOUND;
 
             root.rewind();
-            return {*this};
+            return {this};
         }
         if (strlen(child.getName()) == partLength) {
             if (
@@ -110,7 +112,7 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
                         return getChild(child, nextPart, err);
                     } else {
                         err = MUFS_ERR_OBJECT_NOT_FOUND;
-                        return {*this};
+                        return {this};
                     }
                 } else {
                     err = MUFS_ERR_OK;
@@ -125,7 +127,7 @@ MuFsNode MuFs::get(const char *path, MuFsError &err) {
 
     MuFsNode root = getRoot(err);
     if (err)
-        return {*this};
+        return {this};
 
     return getChild(root, path, err);
 }

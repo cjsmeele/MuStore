@@ -16,12 +16,10 @@ TEST_MAIN() {
 
     auto store = MuFileBlockStore(MUTEST_FAT32FILE_LARGE);
 
-    TEST_FS_WITH(MuFatFs(store), create);
-    TEST_FS_WITH(MuFatFs(store), metadata);
-    TEST_FS_WITH(MuFatFs(store), large_root_readdir);
-    TEST_FS_WITH(MuFatFs(store), large_file_read);
-
-    // WIP.
+    TEST_FS_WITH(MuFatFs(&store), create);
+    TEST_FS_WITH(MuFatFs(&store), metadata);
+    TEST_FS_WITH(MuFatFs(&store), large_root_readdir);
+    TEST_FS_WITH(MuFatFs(&store), large_file_read);
 
     TEST_END();
 }

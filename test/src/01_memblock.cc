@@ -14,7 +14,7 @@
 TEST_MAIN() {
     TEST_START();
 
-    auto image = std::array<uint8_t, 128 * 512>(); // 256K.
+    auto image = std::array<uint8_t, 128 * 512>();
 
     image[510] = 0x55; // Insert boot sector signature.
     image[511] = 0xaa;

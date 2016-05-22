@@ -13,7 +13,7 @@
 
 TEST(fat_subtype) {
     auto store = MuFileBlockStore(MUTEST_FAT12FILE);
-    auto fs_   = MuFatFs(store);
+    auto fs_   = MuFatFs(&store);
     ASSERT(fs_.getFsSubType() == MuFatFs::SubType::FAT12,
            "fat subtype must be FAT12, is %d", fs_.getFsSubType());
 }
@@ -55,18 +55,16 @@ TEST_MAIN() {
     auto store = MuFileBlockStore(MUTEST_FAT12FILE);
     LOG("bc: %lu", store.getBlockCount());
 
-    TEST_FS_WITH(MuFatFs(store), create);
+    TEST_FS_WITH(MuFatFs(&store), create);
 
     RUN_TEST(fat_subtype);
 
-    TEST_FS_WITH(MuFatFs(store), metadata);
-    TEST_FS_WITH(MuFatFs(store), root_readdir);
-    TEST_FS_WITH(MuFatFs(store), get_file);
-    TEST_FS_WITH(MuFatFs(store), get_dir);
-    TEST_FS_WITH(MuFatFs(store), file_read);
-    TEST_FS_WITH(MuFatFs(store), file_read_larger);
-
-    // WIP.
+    TEST_FS_WITH(MuFatFs(&store), metadata);
+    TEST_FS_WITH(MuFatFs(&store), root_readdir);
+    TEST_FS_WITH(MuFatFs(&store), get_file);
+    TEST_FS_WITH(MuFatFs(&store), get_dir);
+    TEST_FS_WITH(MuFatFs(&store), file_read);
+    TEST_FS_WITH(MuFatFs(&store), file_read_larger);
 
     TEST_END();
 }

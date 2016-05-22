@@ -146,7 +146,7 @@ static void trimName(char *str, size_t size) {
 }
 
 MuBlockStoreError MuFatFs::getBlock(size_t lba, void *buffer) {
-    return store.read(lba, buffer);
+    return store->read(lba, buffer);
 }
 MuBlockStoreError MuFatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
     if (lba == cacheLba) {
@@ -282,7 +282,7 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
 MuFsNode MuFatFs::getRoot(MuFsError &err) {
     if (subType == SubType::NONE) {
         err = MUFS_ERR_OPER_UNAVAILABLE;
-        return {*this};
+        return {this};
     }
 
     err = MUFS_ERR_OK;
@@ -303,17 +303,17 @@ MuFsNode MuFatFs::getRoot(MuFsError &err) {
 MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     if (subType == SubType::NONE) {
         err = MUFS_ERR_OPER_UNAVAILABLE;
-        return {*this};
+        return {this};
     }
 
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(parent));
 
     if (!parent.doesExist()) {
         err = MUFS_ERR_OBJECT_NOT_FOUND;
-        return {*this};
+        return {this};
     } else if (!parent.isDirectory()) {
         err = MUFS_ERR_NOT_DIRECTORY;
-        return {*this};
+        return {this};
     }
 
     void    *buffer = nullptr;
@@ -324,11 +324,11 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     do {
         err = getNodeBlock(parent, &buffer);
         if (err)
-            return {*this};
+            return {this};
         if ((ctx->currentEntry + 1) % (logicalSectorSize / sizeof(DirEntry)) == 0) {
             err = incNodeBlock(parent);
             if (err)
-                return {*this};
+                return {this};
         }
 
         // Adjust pointer to current directory entry.
@@ -338,7 +338,7 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
         if (!entry->name[0]) {
             // A name field starting with a NUL byte indicates directory EOF.
             err = MUFS_EOF;
-            return {*this};
+            return {this};
         }
 
         if (!(entry->attrDisk | entry->attrVolumeLabel))
@@ -466,15 +466,15 @@ size_t MuFatFs::write(MuFsNode &file, const void *buffer, size_t size, MuFsError
 }
 // }}}
 
-MuFatFs::MuFatFs(MuBlockStore &store_)
+MuFatFs::MuFatFs(MuBlockStore *store_)
     : MuFs(store_) {
 
     uint8_t buffer[MAX_BLOCK_SIZE];
 
-    if (store.getBlockSize() < 512 || store.getBlockSize() > MAX_BLOCK_SIZE)
+    if (store->getBlockSize() < 512 || store->getBlockSize() > MAX_BLOCK_SIZE)
         return;
 
-    auto err = store.read(0, buffer);
+    auto err = store->read(0, buffer);
 
     if (err)
         return;
@@ -491,7 +491,7 @@ MuFatFs::MuFatFs(MuBlockStore &store_)
         logicalSectorSize = br->bpb.blockSize;
 
         if (   logicalSectorSize != MAX_BLOCK_SIZE
-            || logicalSectorSize != store.getBlockSize())
+            || logicalSectorSize != store->getBlockSize())
             goto _constructFail;
     } { /////////////////////////////////////////////////////
         reservedBlocks = br->bpb.reservedBlocks;

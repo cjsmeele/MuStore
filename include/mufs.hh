@@ -38,7 +38,7 @@ enum MuFsError : int {
 class MuFs {
 
 protected:
-    MuBlockStore &store;        ///< The underlying block storage.
+    MuBlockStore *store;        ///< The underlying block storage.
     char volumeLabel[33] = { }; ///< A label describing this volume.
 
     /**
@@ -210,7 +210,7 @@ public:
      *
      * \param store_ the storage backend to use for this filesystem
      */
-    MuFs(MuBlockStore &store_)
+    MuFs(MuBlockStore *store_)
         : store(store_) { }
 
     virtual ~MuFs() = default;

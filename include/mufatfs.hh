@@ -113,6 +113,6 @@ public:
      *
      * \param store_ the storage backend to use
      */
-    MuFatFs(MuBlockStore &store_);
+    MuFatFs(MuBlockStore *store_);
     ~MuFatFs() = default;
 };
