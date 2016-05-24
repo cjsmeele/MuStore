@@ -65,7 +65,7 @@ TEST(read) {
 
     ASSERT(err == MUBLOCKSTORE_ERR_OK, "read block (err=%d)", err);
 
-    uint16_t sig = ((uint16_t)buffer[510] << 8) | buffer[511];
+    uint16_t sig = ((uint16_t)(buffer[510]) << 8) | buffer[511];
     ASSERT(sig == 0x55aa, "boot sector sig mismatch on read (%#04x != %#04x)", sig, 0x55aa);
 
     ASSERT(store->getPos() == 1, "pos should be 1 after reading first block (pos=%lu)", store->getPos());

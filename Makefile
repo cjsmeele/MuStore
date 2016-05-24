@@ -49,6 +49,11 @@ endif
 ifneq (,$(findstring mem,$(MUSTORE_ENABLE_BLOCK)))
 CXXFILES += $(SRCDIR)/mumemblockstore.cc
 endif
+
+ifneq (,$(MUSTORE_ENABLE_BLOCK))
+CXXFILES += $(SRCDIR)/muscaleblockstore.cc
+endif
+
 ifneq (,$(findstring fat,$(MUSTORE_ENABLE_FS)))
 CXXFILES += $(SRCDIR)/mufatfs.cc
 endif
