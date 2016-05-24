@@ -19,7 +19,9 @@ class MuMemBlockStore : public MuBlockStore {
 
 private:
     /// The store, represented as a memory region.
-    uint8_t *store;
+    const uint8_t *roStore;
+    /// Writable store, will be `nullptr` for ro memory.
+          uint8_t   *store;
 
 public:
     MuBlockStoreError seek(size_t lba);

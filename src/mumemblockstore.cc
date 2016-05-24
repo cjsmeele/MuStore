@@ -20,7 +20,7 @@ MuBlockStoreError MuMemBlockStore::read(void *buffer) {
     if (pos >= blockCount)
         return MUBLOCKSTORE_ERR_OUT_OF_BOUNDS;
 
-    memcpy(buffer, store+pos*blockSize, blockSize);
+    memcpy(buffer, roStore+pos*blockSize, blockSize);
 
     pos++;
 
@@ -30,7 +30,7 @@ MuBlockStoreError MuMemBlockStore::read(void *buffer) {
 MuBlockStoreError MuMemBlockStore::write(const void *buffer) {
     if (pos >= blockCount)
         return MUBLOCKSTORE_ERR_OUT_OF_BOUNDS;
-    if (!writable)
+    if (!writable || !store)
         return MUBLOCKSTORE_ERR_NOT_WRITABLE;
 
     memcpy(store+pos*blockSize, buffer, blockSize);
@@ -42,10 +42,12 @@ MuBlockStoreError MuMemBlockStore::write(const void *buffer) {
 
 MuMemBlockStore::MuMemBlockStore(void *store_, size_t size)
     : MuBlockStore(512, size / 512, true),
-      store((uint8_t*)store_)
+      roStore((uint8_t*)store_),
+        store((uint8_t*)store_)
 { }
 
 MuMemBlockStore::MuMemBlockStore(const void *store_, size_t size)
     : MuBlockStore(512, size / 512, false),
-      store((uint8_t*)store_)
+      roStore((const uint8_t*)store_),
+        store(nullptr)
 { }
