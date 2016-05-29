@@ -341,8 +341,12 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
             return {this};
         }
 
-        if (!(entry->attrDisk | entry->attrVolumeLabel))
+        if (
+            !(entry->attrDisk | entry->attrVolumeLabel)
+            && (uint8_t)entry->name[0] != 0xe5 // Indicates deleted file.
+        ) {
             gotEntry = true;
+        }
 
         ctx->currentEntry++;
 
