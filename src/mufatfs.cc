@@ -587,8 +587,10 @@ MuFatFs::MuFatFs(MuBlockStore *store_)
     if ((subType == SubType::FAT12 || subType == SubType::FAT16)
         && br->ebpb.fat1x.extendedBootSignature == 0x29) {
         strncpy(volumeLabel, br->ebpb.fat1x.volumeLabel, 11);
+        trimName(volumeLabel, 11);
     } else if (subType == SubType::FAT32 && br->ebpb.fat32.extendedBootSignature == 0x29) {
         strncpy(volumeLabel, br->ebpb.fat32.volumeLabel, 11);
+        trimName(volumeLabel, 11);
     }
 
     return;
