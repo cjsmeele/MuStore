@@ -161,6 +161,16 @@ public:
      */
     virtual FsNode readDir(FsNode &parent, FsError &err) = 0;
 
+    virtual FsError removeNode(FsNode &node) = 0;
+
+    virtual FsError renameNode(FsNode &node, const char *newName) = 0;
+
+    virtual FsError moveNode(FsNode &node, const char *newPath) = 0;
+
+    virtual FsNode mkdir(FsNode &parent, const char *name, FsError &err) = 0;
+
+    virtual FsNode mkfile(FsNode &parent, const char *name, FsError &err) = 0;
+
     /// @}
 
     /// \name File I/O

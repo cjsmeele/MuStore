@@ -98,6 +98,21 @@ public:
     /// Proxy for Fs::readDir().
     FsNode readDir(FsError &err);
 
+    /// Proxy for Fs::removeNode().
+    FsError remove();
+
+    /// Proxy for Fs::renameNode().
+    FsError rename(const char *newName);
+
+    /// Proxy for Fs::moveNode().
+    FsError move(const char *newPath);
+
+    /// Proxy for Fs::mkdir().
+    FsNode mkdir(const char *name, FsError &err);
+
+    /// Proxy for Fs::mkfile().
+    FsNode mkfile(const char *name, FsError &err);
+
     /// @}
 
     FsNode(Fs *fs_)

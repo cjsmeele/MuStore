@@ -161,42 +161,75 @@ static void trimName(char *str, size_t size) {
     }
 }
 
-StoreError FatFs::getBlock(size_t lba, void *buffer) {
+StoreError FatFs::readBlock(size_t lba, void *buffer) {
     return store->read(lba, buffer);
 }
-StoreError FatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
+StoreError FatFs::writeBlock(size_t lba, const void *buffer) {
+    return store->write(lba, buffer);
+}
+
+StoreError FatFs::readCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
     if (lba == cacheLba) {
         return STORE_ERR_OK;
     } else {
-        auto err = getBlock(lba, cache);
+        auto err = readBlock(lba, cache);
         cacheLba = err ? 0 : lba; // Invalidate the cache on error.
         return err;
     }
 }
 
-StoreError FatFs::getFatBlock(size_t blockNo, void **buffer) {
-    auto err = getCacheBlock(fatLba + blockNo, fatCache, fatCacheLba);
+StoreError FatFs::writeCacheBlock(size_t lba, const void *buffer, void *cache, size_t &cacheLba) {
+    auto err = writeBlock(lba, buffer);
+    if (err) {
+        if (buffer == cache)
+            cacheLba = 0; // Invalidate the cache.
+        return err;
+    }
+
+    cacheLba = lba;
+
+    if (buffer != cache)
+        memcpy(cache, buffer, logicalSectorSize);
+
+    return STORE_ERR_OK;
+}
+
+StoreError FatFs::readFatBlock(size_t blockNo, void **buffer) {
+    auto err = readCacheBlock(fatLba + blockNo, fatCache, fatCacheLba);
     if (!err)
         *buffer = fatCache;
     return err;
 }
 
-StoreError FatFs::getDataBlock(size_t blockNo, void **buffer) {
-    auto err = getCacheBlock(dataLba + blockNo, dataCache, dataCacheLba);
+StoreError FatFs::readDataBlock(size_t blockNo, void **buffer) {
+    auto err = readCacheBlock(dataLba + blockNo, dataCache, dataCacheLba);
     if (!err)
         *buffer = dataCache;
     return err;
 }
 
 // Note: not valid for FAT32.
-StoreError FatFs::getRootBlock(size_t blockNo, void **buffer) {
-    auto err = getCacheBlock(rootLba + blockNo, dataCache, dataCacheLba);
+StoreError FatFs::readRootBlock(size_t blockNo, void **buffer) {
+    auto err = readCacheBlock(rootLba + blockNo, dataCache, dataCacheLba);
     if (!err)
         *buffer = dataCache;
     return err;
 }
 
-FsError FatFs::getNodeBlock(FsNode &node, void **buffer) {
+StoreError FatFs::writeFatBlock(size_t blockNo, const void *buffer) {
+    return writeCacheBlock(fatLba + blockNo, buffer, fatCache, fatCacheLba);
+}
+
+StoreError FatFs::writeDataBlock(size_t blockNo, const void *buffer) {
+    return writeCacheBlock(dataLba + blockNo, buffer, dataCache, dataCacheLba);
+}
+
+// Note: not valid for FAT32.
+StoreError FatFs::writeRootBlock(size_t blockNo, const void *buffer) {
+    return writeCacheBlock(rootLba + blockNo, buffer, dataCache, dataCacheLba);
+}
+
+FsError FatFs::readNodeBlock(FsNode &node, void **buffer) {
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 
     if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
@@ -206,7 +239,7 @@ FsError FatFs::getNodeBlock(FsNode &node, void **buffer) {
             // Hard limit of root directory reached.
             return FS_EOF;
 
-        auto blockErr = getRootBlock(ctx->currentBlock, buffer);
+        auto blockErr = readRootBlock(ctx->currentBlock, buffer);
         if (blockErr)
             return FS_ERR_IO;
 
@@ -216,12 +249,133 @@ FsError FatFs::getNodeBlock(FsNode &node, void **buffer) {
         if (ctx->currentBlock == BLOCK_EOC)
             return FS_EOF;
 
-        auto blockErr = getDataBlock(ctx->currentBlock, buffer);
+        auto blockErr = readDataBlock(ctx->currentBlock, buffer);
         if (blockErr)
             return FS_ERR_IO;
 
         return FS_ERR_OK;
     }
+}
+
+FsError FatFs::getFatEntry(size_t clusterNo, size_t &entry) {
+    size_t currentCluster = clusterNo;
+    size_t nextCluster    = 0;
+    void  *buffer;
+
+    if (subType == SubType::FAT12) {
+        // Ugh.
+
+        size_t byteOff = currentCluster * 3 / 2; // N 1-and-a-half bytes.
+
+        auto err = readFatBlock(byteOff / logicalSectorSize, &buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        nextCluster |=
+            currentCluster & 1
+            ? ((uint8_t*)buffer)[byteOff % 512] >> 4
+            : ((uint8_t*)buffer)[byteOff % 512];
+
+        byteOff++;
+
+        // It seems FAT12 cluster numbers can be spread over multiple FAT sectors.
+        // I do not like this.
+        err = readFatBlock(byteOff / logicalSectorSize, &buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        nextCluster |=
+            currentCluster & 1
+            ? (uint32_t)((uint8_t*)buffer)[byteOff % 512] << 4
+            : ((uint32_t)((uint8_t*)buffer)[byteOff % 512] & 0x0f) << 8;
+
+    } else {
+        // Yay.
+        uint32_t clustersPerFatSector =
+            subType == SubType::FAT16
+            ? logicalSectorSize / 2
+            : logicalSectorSize / 4;
+
+        auto err = readFatBlock(currentCluster / clustersPerFatSector, &buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        if (subType == SubType::FAT16) {
+            nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
+        } else if (subType == SubType::FAT32) {
+            nextCluster = ((uint32_t*)buffer)[currentCluster % clustersPerFatSector];
+        }
+    }
+
+    entry = nextCluster;
+
+    return FS_ERR_OK;
+}
+
+FsError FatFs::setFatEntry(size_t clusterNo, size_t nextCluster) {
+    void *buffer;
+
+    if (subType == SubType::FAT12) {
+        // Ugh.
+
+        size_t byteOff = clusterNo * 3 / 2; // N 1-and-a-half bytes.
+
+        auto err = readFatBlock(byteOff / logicalSectorSize, &buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        ((uint8_t*)buffer)[byteOff % 512] =
+            clusterNo & 1
+            ? (uint8_t)((((uint8_t*)buffer)[byteOff % 512] & 0x0f)
+               | (uint8_t)((nextCluster & 0x0f)<<4))
+            : (uint8_t)nextCluster;
+
+        err = writeFatBlock(byteOff / logicalSectorSize, buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        byteOff++;
+
+        if (byteOff % logicalSectorSize == 0) {
+            // We crossed a sector boundary.
+            err = readFatBlock(byteOff / logicalSectorSize, &buffer);
+            if (err)
+                return FS_ERR_IO;
+        }
+
+        ((uint8_t*)buffer)[byteOff % 512] =
+            clusterNo & 1
+            ? (uint8_t)(nextCluster >> 4)
+            : (uint8_t)((((uint8_t*)buffer)[byteOff % 512] & 0xf0)
+               | (uint8_t)(nextCluster >> 8));
+
+        err = writeFatBlock(byteOff / logicalSectorSize, buffer);
+        if (err)
+            return FS_ERR_IO;
+
+    } else {
+        // Yay.
+        uint32_t clustersPerFatSector =
+            subType == SubType::FAT16
+            ? logicalSectorSize / 2
+            : logicalSectorSize / 4;
+
+        auto err = readFatBlock(clusterNo / clustersPerFatSector, &buffer);
+        if (err)
+            return FS_ERR_IO;
+
+        if (subType == SubType::FAT16) {
+            ((uint16_t*)buffer)[clusterNo % clustersPerFatSector] = (uint16_t)nextCluster;
+        } else if (subType == SubType::FAT32) {
+            ((uint32_t*)buffer)[clusterNo % clustersPerFatSector] = (uint32_t)nextCluster;
+        }
+
+        err = writeFatBlock(clusterNo / clustersPerFatSector, buffer);
+        if (err)
+            return FS_ERR_IO;
+    }
+
+    return FS_ERR_OK;
 }
 
 FsError FatFs::incNodeBlock(FsNode &node) {
@@ -237,60 +391,23 @@ FsError FatFs::incNodeBlock(FsNode &node) {
             return FS_ERR_OK;
         } else {
             // We need to find the next cluster.
-            size_t currentCluster = blockToCluster(ctx->currentBlock);
-            size_t nextCluster    = 0;
-            void  *buffer;
-
-            if (subType == SubType::FAT12) {
-                // Ugh.
-
-                size_t byteOff = currentCluster * 3 / 2; // N 1-and-a-half bytes.
-
-                auto err = getFatBlock(byteOff / logicalSectorSize, &buffer);
-                if (err)
-                    return FS_ERR_IO;
-
-                nextCluster |=
-                    currentCluster & 1
-                    ? ((uint8_t*)buffer)[byteOff % 512] >> 4
-                    : ((uint8_t*)buffer)[byteOff % 512];
-
-                byteOff++;
-
-                // It seems FAT12 cluster numbers can be spread over multiple FAT sectors.
-                // I do not like this.
-                err = getFatBlock(byteOff / logicalSectorSize, &buffer);
-                if (err)
-                    return FS_ERR_IO;
-
-                nextCluster |=
-                    currentCluster & 1
-                    ? (uint32_t)((uint8_t*)buffer)[byteOff % 512] << 4
-                    : ((uint32_t)((uint8_t*)buffer)[byteOff % 512] & 0x0f) << 8;
-
-            } else {
-                // Yay.
-                uint32_t clustersPerFatSector =
-                    subType == SubType::FAT16
-                    ? logicalSectorSize / 2
-                    : logicalSectorSize / 4;
-
-                auto err = getFatBlock(currentCluster / clustersPerFatSector, &buffer);
-                if (err)
-                    return FS_ERR_IO;
-
-                if (subType == SubType::FAT16) {
-                    nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
-                } else if (subType == SubType::FAT32) {
-                    nextCluster = ((uint32_t*)buffer)[currentCluster % clustersPerFatSector];
-                }
-            }
-
+            size_t nextCluster = 0;
+            getFatEntry(blockToCluster(ctx->currentBlock), nextCluster);
             ctx->currentBlock = clusterToBlock(nextCluster);
 
             return FS_ERR_OK;
         }
     }
+}
+
+FsError FatFs::allocCluster(FsNode &node) {
+    if (!node.doesExist())
+        return FS_ERR_OBJECT_NOT_FOUND;
+    if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16))
+        // Can't expand root dir area on FAT12 and FAT16.
+        return FS_ERR_NO_SPACE;
+
+    NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 }
 
 // Directory operations {{{
@@ -338,7 +455,7 @@ FsNode FatFs::readDir(FsNode &parent, FsError &err) {
     // Fetch the next regular direntry, skip 'disk' and 'volume label' types.
     bool gotEntry = false;
     do {
-        err = getNodeBlock(parent, &buffer);
+        err = readNodeBlock(parent, &buffer);
         if (err)
             return {this};
         if ((ctx->currentEntry + 1) % (logicalSectorSize / sizeof(DirEntry)) == 0) {
@@ -391,6 +508,29 @@ FsNode FatFs::readDir(FsNode &parent, FsError &err) {
     return child;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+
+FsError FatFs::removeNode(FsNode &node){
+    return FS_ERR_OPER_UNAVAILABLE;
+}
+FsError FatFs::renameNode(FsNode &node, const char *newName){
+    return FS_ERR_OPER_UNAVAILABLE;
+}
+FsError FatFs::moveNode(FsNode &node, const char *newPath){
+    return FS_ERR_OPER_UNAVAILABLE;
+}
+FsNode FatFs::mkdir(FsNode &parent, const char *name, FsError &err){
+    err = FS_ERR_OPER_UNAVAILABLE;
+    return {this};
+}
+FsNode FatFs::mkfile(FsNode &parent, const char *name, FsError &err){
+    err = FS_ERR_OPER_UNAVAILABLE;
+    return {this};
+}
+
+#pragma GCC diagnostic pop
+
 // }}}
 
 // File I/O {{{
@@ -437,7 +577,7 @@ size_t FatFs::read(FsNode &file, void *dest, size_t size, FsError &err) {
     }
 
     while (bytesRead < size) {
-        err = getNodeBlock(file, &buffer);
+        err = readNodeBlock(file, &buffer);
         if (err)
             return bytesRead;
 
