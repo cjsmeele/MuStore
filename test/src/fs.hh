@@ -8,13 +8,15 @@
 #pragma once
 
 #include "test.hh"
-#include "mufs.hh"
+#include <fs.hh>
 
 #include <string>
 #include <list>
 #include <vector>
 
-MuFs *fs;
+using namespace MuStore;
+
+Fs *fs;
 
 #define TEST_FS_WITH(x, test)                 \
     {                                         \
@@ -26,7 +28,7 @@ MuFs *fs;
 TEST(create) {
     ASSERT(fs, "fs was not created");
 
-    MuFsError err;
+    FsError err;
     auto dir = fs->getRoot(err);
     ASSERT(!err, "getRoot() failed (err=%d)", err);
 
@@ -39,7 +41,7 @@ TEST(metadata) {
 }
 
 TEST(root_readdir) {
-    MuFsError err;
+    FsError err;
     auto root = fs->getRoot(err);
     ASSERT(!err, "getRoot() failed (err=%d)", err);
 
@@ -81,7 +83,7 @@ TEST(root_readdir) {
             }
             ASSERT(found, "unexpected direntry '%s'", child.getName());
         } else {
-            ASSERT(err == MUFS_EOF, "expected EOF on directory (err=%d)", err);
+            ASSERT(err == FS_EOF, "expected EOF on directory (err=%d)", err);
             break;
         }
     }
@@ -92,7 +94,7 @@ TEST(large_root_readdir) {
     foundDirs.resize(200);
     int entriesLeft = 200;
 
-    MuFsError err;
+    FsError err;
     auto root = fs->getRoot(err);
     ASSERT(!err, "getRoot() failed (err=%d)", err);
 
@@ -118,14 +120,14 @@ TEST(large_root_readdir) {
             entriesLeft--;
 
         } else {
-            ASSERT(err == MUFS_EOF, "expected EOF on directory (err=%d)", err);
+            ASSERT(err == FS_EOF, "expected EOF on directory (err=%d)", err);
             break;
         }
     }
 }
 
 TEST(get_file) {
-    MuFsError err;
+    FsError err;
     auto file = fs->get("/dir2/subsub/zstuff.txt", err);
     ASSERT(!err, "get() of file failed (err=%d)", err);
     ASSERT(file.doesExist(), "get() file does not exist");
@@ -136,7 +138,7 @@ TEST(get_file) {
 }
 
 TEST(get_dir) {
-    MuFsError err;
+    FsError err;
     auto dir = fs->get("/dir2/subsub", err);
     ASSERT(!err, "get() of directory failed (err=%d)", err);
     ASSERT(dir.doesExist(), "get() directory does not exist");
@@ -154,7 +156,7 @@ TEST(get_dir) {
 }
 
 TEST(file_read) {
-    MuFsError err;
+    FsError err;
     auto file = fs->get("/test.txt", err);
     ASSERT(!err, "get() of file '/test.txt' failed (err=%d)", err);
 
@@ -166,7 +168,7 @@ TEST(file_read) {
 
     while (totalRead < expected.length()) {
         size_t bytesRead = file.read(p, atATime, err);
-        if (err == MUFS_EOF) {
+        if (err == FS_EOF) {
             ASSERT(bytesRead + totalRead == expected.length(),
                    "got unexpected EOF at %lu/%lu bytes",
                    bytesRead + totalRead, expected.length());
@@ -175,7 +177,7 @@ TEST(file_read) {
         }
 
         if (bytesRead != atATime) {
-            ASSERT(err == MUFS_EOF,
+            ASSERT(err == FS_EOF,
                    "read() returned %lu bytes instead of %lu",
                    bytesRead, atATime);
         }
@@ -191,10 +193,10 @@ TEST(file_read) {
 
 
 TEST(large_file_read) {
-    MuFsError err;
+    FsError err;
     FILE *fileRef = fopen("testfs_large/rtdir100/huge.txt", "r");
     ASSERT(fileRef, "fopen() failed: %s", strerror(errno));
-    MuFsNode fileMu = fs->get("/rtdir100/huge.txt", err);
+    FsNode fileMu = fs->get("/rtdir100/huge.txt", err);
     ASSERT(!err, "get() of file '/rtdir100/huge.txt' failed (err=%d)", err);
 
     const size_t atATime = 13;
@@ -206,13 +208,13 @@ TEST(large_file_read) {
         size_t bytesReadMu  = fileMu.read(bufferMu, atATime, err);
 
         ASSERT(bytesReadRef == bytesReadMu,
-               "fread and MuFsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
+               "fread and FsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
                bytesReadRef, bytesReadMu);
 
         ASSERT(!memcmp(bufferRef, bufferMu, bytesReadRef),
                "read bytes from stdio and Mu are unequal");
 
-        if (err == MUFS_EOF) {
+        if (err == FS_EOF) {
             ASSERT(feof(fileRef), "unexpected EOF on read()");
             break;
         } else {

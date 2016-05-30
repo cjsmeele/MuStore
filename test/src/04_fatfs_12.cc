@@ -1,6 +1,6 @@
 /**
  * \file
- * \brief     Tests for MuFatFs.
+ * \brief     Tests for FatFs.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
  * \license   LGPLv3+, see LICENSE
@@ -8,21 +8,21 @@
 #include "test.hh"
 #include "fs.hh"
 
-#include "mufileblockstore.hh"
-#include "mufatfs.hh"
+#include <filestore.hh>
+#include <fatfs.hh>
 
 TEST(fat_subtype) {
-    auto store = MuFileBlockStore(MUTEST_FAT12FILE);
-    auto fs_   = MuFatFs(&store);
-    ASSERT(fs_.getFsSubType() == MuFatFs::SubType::FAT12,
+    auto store = FileStore(MUTEST_FAT12FILE);
+    auto fs_   = FatFs(&store);
+    ASSERT(fs_.getFsSubType() == FatFs::SubType::FAT12,
            "fat subtype must be FAT12, is %d", fs_.getFsSubType());
 }
 
 TEST(file_read_larger) {
-    MuFsError err;
+    FsError err;
     FILE *fileRef = fopen("testfs/huge.txt", "r");
     ASSERT(fileRef, "fopen() failed: %s", strerror(errno));
-    MuFsNode fileMu = fs->get("/huge.txt", err);
+    FsNode fileMu = fs->get("/huge.txt", err);
     ASSERT(!err, "get() of file '/huge.txt' failed (err=%d)", err);
 
     const size_t atATime = 59;
@@ -34,13 +34,13 @@ TEST(file_read_larger) {
         size_t bytesReadMu  = fileMu.read(bufferMu, atATime, err);
 
         ASSERT(bytesReadRef == bytesReadMu,
-               "fread and MuFsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
+               "fread and FsNode.read() didn't return the same amount of bytes (%lu vs %lu)",
                bytesReadRef, bytesReadMu);
 
         ASSERT(!memcmp(bufferRef, bufferMu, bytesReadRef),
                "read bytes from stdio and Mu are unequal");
 
-        if (err == MUFS_EOF) {
+        if (err == FS_EOF) {
             ASSERT(feof(fileRef), "unexpected EOF on read()");
             break;
         } else {
@@ -52,19 +52,19 @@ TEST(file_read_larger) {
 TEST_MAIN() {
     TEST_START();
 
-    auto store = MuFileBlockStore(MUTEST_FAT12FILE);
+    auto store = FileStore(MUTEST_FAT12FILE);
     LOG("bc: %lu", store.getBlockCount());
 
-    TEST_FS_WITH(MuFatFs(&store), create);
+    TEST_FS_WITH(FatFs(&store), create);
 
     RUN_TEST(fat_subtype);
 
-    TEST_FS_WITH(MuFatFs(&store), metadata);
-    TEST_FS_WITH(MuFatFs(&store), root_readdir);
-    TEST_FS_WITH(MuFatFs(&store), get_file);
-    TEST_FS_WITH(MuFatFs(&store), get_dir);
-    TEST_FS_WITH(MuFatFs(&store), file_read);
-    TEST_FS_WITH(MuFatFs(&store), file_read_larger);
+    TEST_FS_WITH(FatFs(&store), metadata);
+    TEST_FS_WITH(FatFs(&store), root_readdir);
+    TEST_FS_WITH(FatFs(&store), get_file);
+    TEST_FS_WITH(FatFs(&store), get_dir);
+    TEST_FS_WITH(FatFs(&store), file_read);
+    TEST_FS_WITH(FatFs(&store), file_read_larger);
 
     TEST_END();
 }

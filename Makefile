@@ -44,22 +44,22 @@ MUSTORE_ENABLE_VFS   ?= 1
 -include Makefile.local
 
 ifneq (,$(findstring file,$(MUSTORE_ENABLE_BLOCK)))
-CXXFILES += $(SRCDIR)/mufileblockstore.cc
+CXXFILES += $(SRCDIR)/filestore.cc
 endif
 ifneq (,$(findstring mem,$(MUSTORE_ENABLE_BLOCK)))
-CXXFILES += $(SRCDIR)/mumemblockstore.cc
+CXXFILES += $(SRCDIR)/memstore.cc
 endif
 
 ifneq (,$(MUSTORE_ENABLE_BLOCK))
-CXXFILES += $(SRCDIR)/muscaleblockstore.cc
+CXXFILES += $(SRCDIR)/scalestore.cc
 endif
 
 ifneq (,$(findstring fat,$(MUSTORE_ENABLE_FS)))
-CXXFILES += $(SRCDIR)/mufatfs.cc
+CXXFILES += $(SRCDIR)/fatfs.cc
 endif
 
 ifneq (,$(MUSTORE_ENABLE_FS))
-CXXFILES += $(SRCDIR)/mufs.cc $(SRCDIR)/mufsnode.cc
+CXXFILES += $(SRCDIR)/fs.cc $(SRCDIR)/fsnode.cc
 endif
 
 OBJFILES := $(CXXFILES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)

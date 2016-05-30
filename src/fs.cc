@@ -2,18 +2,34 @@
  * \file
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "mufs.hh"
+#include "fs.hh"
 #include <cstring>
 
-MuFsNode MuFs::makeNode(
+namespace MuStore {
+
+FsNode Fs::makeNode(
     const char *name,
     bool exists,
     bool directory,
     size_t size
 ) {
-    MuFsNode node {this};
+    FsNode node {this};
     strncpy(node.name, name, node.MAX_NAME_LENGTH);
     node.exists    = exists;
     node.directory = directory;
@@ -22,11 +38,11 @@ MuFsNode MuFs::makeNode(
     return node;
 }
 
-void MuFs::nodeUpdatePos(MuFsNode &node, size_t pos) const {
+void Fs::nodeUpdatePos(FsNode &node, size_t pos) const {
     node.pos = pos;
 }
 
-void *MuFs::getNodeContext(MuFsNode &node) const {
+void *Fs::getNodeContext(FsNode &node) const {
     return node.fsContext;
 }
 
@@ -56,10 +72,10 @@ static int strncasecmp(const char *s1, const char *s2, size_t n) throw() {
 
 #endif /* !defined(_DEFAULT_SOURCE) && !defined(_BSD_SOURCE) */
 
-MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
+FsNode Fs::getChild(FsNode &root, const char *path, FsError &err) {
 
     if (!root.isDirectory()) {
-        err = MUFS_ERR_NOT_DIRECTORY;
+        err = FS_ERR_NOT_DIRECTORY;
         // Return a new non-existent node on failure.
         return {this};
     }
@@ -69,7 +85,7 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
         path++;
 
     if (strlen(path) == 0) {
-        err = MUFS_ERR_OK;
+        err = FS_ERR_OK;
         return root;
     }
 
@@ -87,11 +103,11 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
         return {this};
 
     while (true) {
-        MuFsNode child = readDir(root, err);
+        FsNode child = readDir(root, err);
 
         if (err) {
-            if (err == MUFS_EOF)
-                err = MUFS_ERR_OBJECT_NOT_FOUND;
+            if (err == FS_EOF)
+                err = FS_ERR_OBJECT_NOT_FOUND;
 
             root.rewind();
             return {this};
@@ -111,11 +127,11 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
                         // Gotta go deeper.
                         return getChild(child, nextPart, err);
                     } else {
-                        err = MUFS_ERR_OBJECT_NOT_FOUND;
+                        err = FS_ERR_OBJECT_NOT_FOUND;
                         return {this};
                     }
                 } else {
-                    err = MUFS_ERR_OK;
+                    err = FS_ERR_OK;
                     return child;
                 }
             }
@@ -123,11 +139,13 @@ MuFsNode MuFs::getChild(MuFsNode &root, const char *path, MuFsError &err) {
     }
 }
 
-MuFsNode MuFs::get(const char *path, MuFsError &err) {
+FsNode Fs::get(const char *path, FsError &err) {
 
-    MuFsNode root = getRoot(err);
+    FsNode root = getRoot(err);
     if (err)
         return {this};
 
     return getChild(root, path, err);
+}
+
 }

@@ -1,17 +1,34 @@
 /**
  * \file
- * \brief     MuFatFs header.
+ * \brief     FatFs header.
+ * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
-#include "mufs.hh"
+#include "fs.hh"
+
+namespace MuStore {
 
 /**
  * \brief FAT filesystem.
  */
-class MuFatFs : public MuFs {
+class FatFs : public Fs {
 
 public:
     enum class SubType {
@@ -52,12 +69,12 @@ private:
     size_t  dataCacheLba = 0; ///< LBA of the currently cached data block.
     uint8_t dataCache[MAX_BLOCK_SIZE];
 
-    MuBlockStoreError getBlock(size_t blockNo, void *buffer);
-    MuBlockStoreError getCacheBlock(size_t lba, void *cache, size_t &cacheLba);
+    StoreError getBlock(size_t blockNo, void *buffer);
+    StoreError getCacheBlock(size_t lba, void *cache, size_t &cacheLba);
 
-    MuBlockStoreError getFatBlock (size_t blockNo, void **buffer);
-    MuBlockStoreError getRootBlock(size_t blockNo, void **buffer);
-    MuBlockStoreError getDataBlock(size_t blockNo, void **buffer);
+    StoreError getFatBlock (size_t blockNo, void **buffer);
+    StoreError getRootBlock(size_t blockNo, void **buffer);
+    StoreError getDataBlock(size_t blockNo, void **buffer);
 
     /// Magic end-of-chain block value.
     static const size_t BLOCK_EOC = ~(size_t)0ULL;
@@ -76,8 +93,8 @@ private:
             return (clusterNo - 2) * clusterSize;
     }
 
-    MuFsError getNodeBlock(MuFsNode &node, void **buffer);
-    MuFsError incNodeBlock(MuFsNode &node);
+    FsError getNodeBlock(FsNode &node, void **buffer);
+    FsError incNodeBlock(FsNode &node);
 
 public:
     const char *getFsType() const { return "FAT";   }
@@ -101,18 +118,20 @@ public:
      */
     bool isCaseSensitive()  const { return false;   }
 
-    MuFsNode getRoot(MuFsError &err);
-    MuFsNode readDir(MuFsNode &parent, MuFsError &err);
+    FsNode getRoot(FsError &err);
+    FsNode readDir(FsNode &parent, FsError &err);
 
-    MuFsError seek (MuFsNode &node, size_t pos_);
-    size_t read (MuFsNode &file,       void *buffer, size_t size, MuFsError &err);
-    size_t write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err);
+    FsError seek (FsNode &node, size_t pos_);
+    size_t read (FsNode &file,       void *buffer, size_t size, FsError &err);
+    size_t write(FsNode &file, const void *buffer, size_t size, FsError &err);
 
     /**
-     * \brief MuFatFs constructor.
+     * \brief FatFs constructor.
      *
      * \param store_ the storage backend to use
      */
-    MuFatFs(MuBlockStore *store_);
-    ~MuFatFs() = default;
+    FatFs(Store *store_);
+    ~FatFs() = default;
 };
+
+}

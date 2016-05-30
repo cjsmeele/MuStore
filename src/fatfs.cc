@@ -2,12 +2,28 @@
  * \file
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "mufatfs.hh"
+#include "fatfs.hh"
 
 #include <cstring>
 #include <algorithm>
+
+namespace MuStore {
 
 // We distinguish FAT types using the number of clusters.
 // Source: http://www.win.tue.nl/~aeb/linux/fs/fat/fat-1.html
@@ -20,9 +36,9 @@ struct NodeContext {
     size_t currentBlock; ///< .
     size_t currentEntry; ///< Current direntry, only used for directories.
 };
-static_assert(sizeof(NodeContext) <= MuFsNode::CONTEXT_SIZE,
-              "FS context size exceeds reserved space in MuFsNode type"
-              " (please increase MuFsNode::CONTEXT_SIZE)"
+static_assert(sizeof(NodeContext) <= FsNode::CONTEXT_SIZE,
+              "FS context size exceeds reserved space in FsNode type"
+              " (please increase FsNode::CONTEXT_SIZE)"
              );
 
 // FAT data structures {{{
@@ -145,12 +161,12 @@ static void trimName(char *str, size_t size) {
     }
 }
 
-MuBlockStoreError MuFatFs::getBlock(size_t lba, void *buffer) {
+StoreError FatFs::getBlock(size_t lba, void *buffer) {
     return store->read(lba, buffer);
 }
-MuBlockStoreError MuFatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
+StoreError FatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheLba) {
     if (lba == cacheLba) {
-        return MUBLOCKSTORE_ERR_OK;
+        return STORE_ERR_OK;
     } else {
         auto err = getBlock(lba, cache);
         cacheLba = err ? 0 : lba; // Invalidate the cache on error.
@@ -158,14 +174,14 @@ MuBlockStoreError MuFatFs::getCacheBlock(size_t lba, void *cache, size_t &cacheL
     }
 }
 
-MuBlockStoreError MuFatFs::getFatBlock(size_t blockNo, void **buffer) {
+StoreError FatFs::getFatBlock(size_t blockNo, void **buffer) {
     auto err = getCacheBlock(fatLba + blockNo, fatCache, fatCacheLba);
     if (!err)
         *buffer = fatCache;
     return err;
 }
 
-MuBlockStoreError MuFatFs::getDataBlock(size_t blockNo, void **buffer) {
+StoreError FatFs::getDataBlock(size_t blockNo, void **buffer) {
     auto err = getCacheBlock(dataLba + blockNo, dataCache, dataCacheLba);
     if (!err)
         *buffer = dataCache;
@@ -173,14 +189,14 @@ MuBlockStoreError MuFatFs::getDataBlock(size_t blockNo, void **buffer) {
 }
 
 // Note: not valid for FAT32.
-MuBlockStoreError MuFatFs::getRootBlock(size_t blockNo, void **buffer) {
+StoreError FatFs::getRootBlock(size_t blockNo, void **buffer) {
     auto err = getCacheBlock(rootLba + blockNo, dataCache, dataCacheLba);
     if (!err)
         *buffer = dataCache;
     return err;
 }
 
-MuFsError MuFatFs::getNodeBlock(MuFsNode &node, void **buffer) {
+FsError FatFs::getNodeBlock(FsNode &node, void **buffer) {
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 
     if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
@@ -188,37 +204,37 @@ MuFsError MuFatFs::getNodeBlock(MuFsNode &node, void **buffer) {
 
         if (ctx->currentBlock >= rootDirEntryCount * sizeof(DirEntry) / logicalSectorSize)
             // Hard limit of root directory reached.
-            return MUFS_EOF;
+            return FS_EOF;
 
         auto blockErr = getRootBlock(ctx->currentBlock, buffer);
         if (blockErr)
-            return MUFS_ERR_IO;
+            return FS_ERR_IO;
 
-        return MUFS_ERR_OK;
+        return FS_ERR_OK;
 
     } else {
         if (ctx->currentBlock == BLOCK_EOC)
-            return MUFS_EOF;
+            return FS_EOF;
 
         auto blockErr = getDataBlock(ctx->currentBlock, buffer);
         if (blockErr)
-            return MUFS_ERR_IO;
+            return FS_ERR_IO;
 
-        return MUFS_ERR_OK;
+        return FS_ERR_OK;
     }
 }
 
-MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
+FsError FatFs::incNodeBlock(FsNode &node) {
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 
     if (!strcmp(node.getName(), "/") && (subType == SubType::FAT12 || subType == SubType::FAT16)) {
         ctx->currentBlock++; // No need for cluster magic! :D
-        return MUFS_ERR_OK;
+        return FS_ERR_OK;
     } else {
         if ((ctx->currentBlock+1) % clusterSize) {
             // We'll remain in the same cluster, no problemo.
             ctx->currentBlock++;
-            return MUFS_ERR_OK;
+            return FS_ERR_OK;
         } else {
             // We need to find the next cluster.
             size_t currentCluster = blockToCluster(ctx->currentBlock);
@@ -232,7 +248,7 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
 
                 auto err = getFatBlock(byteOff / logicalSectorSize, &buffer);
                 if (err)
-                    return MUFS_ERR_IO;
+                    return FS_ERR_IO;
 
                 nextCluster |=
                     currentCluster & 1
@@ -245,7 +261,7 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
                 // I do not like this.
                 err = getFatBlock(byteOff / logicalSectorSize, &buffer);
                 if (err)
-                    return MUFS_ERR_IO;
+                    return FS_ERR_IO;
 
                 nextCluster |=
                     currentCluster & 1
@@ -261,7 +277,7 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
 
                 auto err = getFatBlock(currentCluster / clustersPerFatSector, &buffer);
                 if (err)
-                    return MUFS_ERR_IO;
+                    return FS_ERR_IO;
 
                 if (subType == SubType::FAT16) {
                     nextCluster = ((uint16_t*)buffer)[currentCluster % clustersPerFatSector];
@@ -272,20 +288,20 @@ MuFsError MuFatFs::incNodeBlock(MuFsNode &node) {
 
             ctx->currentBlock = clusterToBlock(nextCluster);
 
-            return MUFS_ERR_OK;
+            return FS_ERR_OK;
         }
     }
 }
 
 // Directory operations {{{
 
-MuFsNode MuFatFs::getRoot(MuFsError &err) {
+FsNode FatFs::getRoot(FsError &err) {
     if (subType == SubType::NONE) {
-        err = MUFS_ERR_OPER_UNAVAILABLE;
+        err = FS_ERR_OPER_UNAVAILABLE;
         return {this};
     }
 
-    err = MUFS_ERR_OK;
+    err = FS_ERR_OK;
     auto node = makeNode("/", true, true);
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
 
@@ -300,19 +316,19 @@ MuFsNode MuFatFs::getRoot(MuFsError &err) {
     return node;
 }
 
-MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
+FsNode FatFs::readDir(FsNode &parent, FsError &err) {
     if (subType == SubType::NONE) {
-        err = MUFS_ERR_OPER_UNAVAILABLE;
+        err = FS_ERR_OPER_UNAVAILABLE;
         return {this};
     }
 
     NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(parent));
 
     if (!parent.doesExist()) {
-        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        err = FS_ERR_OBJECT_NOT_FOUND;
         return {this};
     } else if (!parent.isDirectory()) {
-        err = MUFS_ERR_NOT_DIRECTORY;
+        err = FS_ERR_NOT_DIRECTORY;
         return {this};
     }
 
@@ -337,7 +353,7 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
 
         if (!entry->name[0]) {
             // A name field starting with a NUL byte indicates directory EOF.
-            err = MUFS_EOF;
+            err = FS_EOF;
             return {this};
         }
 
@@ -371,44 +387,44 @@ MuFsNode MuFatFs::readDir(MuFsNode &parent, MuFsError &err) {
     childCtx->startBlock   = clusterToBlock(startCluster);
     childCtx->currentBlock = childCtx->startBlock;
 
-    err = MUFS_ERR_OK;
+    err = FS_ERR_OK;
     return child;
 }
 
 // }}}
 
 // File I/O {{{
-MuFsError MuFatFs::seek(MuFsNode &node, size_t pos_) {
+FsError FatFs::seek(FsNode &node, size_t pos_) {
     if (subType == SubType::NONE)
-        return MUFS_ERR_OPER_UNAVAILABLE;
+        return FS_ERR_OPER_UNAVAILABLE;
 
     if (!node.doesExist())
-        return MUFS_ERR_OBJECT_NOT_FOUND;
+        return FS_ERR_OBJECT_NOT_FOUND;
 
     if (pos_ == 0) {
         NodeContext *ctx = static_cast<NodeContext*>(getNodeContext(node));
         ctx->currentBlock = ctx->startBlock;
         ctx->currentEntry = 0;
         nodeUpdatePos(node, pos_);
-        return MUFS_ERR_OK;
+        return FS_ERR_OK;
     } else {
         // TODO.
         // Only support rewinds for now.
-        return MUFS_ERR_OPER_UNAVAILABLE;
+        return FS_ERR_OPER_UNAVAILABLE;
     }
 }
 
-size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
+size_t FatFs::read(FsNode &file, void *dest, size_t size, FsError &err) {
     if (subType == SubType::NONE) {
-        err = MUFS_ERR_OPER_UNAVAILABLE;
+        err = FS_ERR_OPER_UNAVAILABLE;
         return 0;
     }
 
     if (!file.doesExist()) {
-        err = MUFS_ERR_OBJECT_NOT_FOUND;
+        err = FS_ERR_OBJECT_NOT_FOUND;
         return 0;
     } else if (file.isDirectory()) {
-        err = MUFS_ERR_NOT_FILE;
+        err = FS_ERR_NOT_FILE;
         return 0;
     }
 
@@ -416,7 +432,7 @@ size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
     void *buffer;
 
     if (file.getPos() >= file.getSize()) {
-        err = MUFS_EOF;
+        err = FS_EOF;
         return 0;
     }
 
@@ -450,28 +466,28 @@ size_t MuFatFs::read(MuFsNode &file, void *dest, size_t size, MuFsError &err) {
 
         if (file.getPos() >= file.getSize() && size - bytesRead > 0) {
             // EOF reached before the requested amount of bytes could be read.
-            err = MUFS_EOF;
+            err = FS_EOF;
             return bytesRead;
         }
     }
 
-    err = MUFS_ERR_OK;
+    err = FS_ERR_OK;
     return bytesRead;
 }
-size_t MuFatFs::write(MuFsNode &file, const void *buffer, size_t size, MuFsError &err) {
+size_t FatFs::write(FsNode &file, const void *buffer, size_t size, FsError &err) {
     if (subType == SubType::NONE) {
-        err = MUFS_ERR_OPER_UNAVAILABLE;
+        err = FS_ERR_OPER_UNAVAILABLE;
         return 0;
     }
 
     // TODO.
-    err = MUFS_ERR_OPER_UNAVAILABLE;
+    err = FS_ERR_OPER_UNAVAILABLE;
     return 0;
 }
 // }}}
 
-MuFatFs::MuFatFs(MuBlockStore *store_)
-    : MuFs(store_) {
+FatFs::FatFs(Store *store_)
+    : Fs(store_) {
 
     uint8_t buffer[MAX_BLOCK_SIZE];
 
@@ -596,6 +612,8 @@ MuFatFs::MuFatFs(MuBlockStore *store_)
     return;
 
 _constructFail:
-    // Leave the MuFatFs in a recognizably unusable state.
+    // Leave the FatFs in a recognizably unusable state.
     subType = SubType::NONE;
+}
+
 }

@@ -1,23 +1,39 @@
 /**
  * \file
- * \brief     MuFsNode header.
+ * \brief     FsNode header.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
-#include "mufs.hh"
+#include "fs.hh"
 
-class MuFs;
-enum  MuFsError : int;
+namespace MuStore {
+
+class Fs;
+enum  FsError : int;
 
 /**
  * \brief A file or directory in a MuFS filesystem.
  */
-class MuFsNode {
+class FsNode {
 
-    friend MuFs; ///< 😳  <3
+    friend Fs; ///< 😳  <3
 
 public:
     /// Max length of node basenames.
@@ -27,7 +43,7 @@ public:
     static const size_t CONTEXT_SIZE    = 24;
 
 protected:
-    MuFs *fs; ///< The MuFs in which this file resides.
+    Fs *fs; ///< The Fs in which this file resides.
 
     /**
      * \brief Fs private information.
@@ -64,28 +80,30 @@ public:
     /// \name Proxy functions
     /// @{
 
-    /// Proxy for MuFs::get().
-    MuFsNode get(const char *path, MuFsError &err);
+    /// Proxy for Fs::get().
+    FsNode get(const char *path, FsError &err);
 
-    /// Proxy for MuFs::seek().
-    MuFsError seek(size_t pos_);
+    /// Proxy for Fs::seek().
+    FsError seek(size_t pos_);
 
     /// Shortcut for seek().
-    MuFsError rewind() { return seek(0); };
+    FsError rewind() { return seek(0); };
 
-    /// Proxy for MuFs::read().
-    size_t read (void *buffer, size_t size, MuFsError &err);
+    /// Proxy for Fs::read().
+    size_t read (void *buffer, size_t size, FsError &err);
 
-    /// Proxy for MuFs::write().
-    size_t write(const void *buffer, size_t size, MuFsError &err);
+    /// Proxy for Fs::write().
+    size_t write(const void *buffer, size_t size, FsError &err);
 
-    /// Proxy for MuFs::readDir().
-    MuFsNode readDir(MuFsError &err);
+    /// Proxy for Fs::readDir().
+    FsNode readDir(FsError &err);
 
     /// @}
 
-    MuFsNode(MuFs *fs_)
+    FsNode(Fs *fs_)
         : fs(fs_) { }
 
-    virtual ~MuFsNode() = default;
+    virtual ~FsNode() = default;
 };
+
+}

@@ -2,22 +2,38 @@
  * \file
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#include "muscaleblockstore.hh"
+#include "scalestore.hh"
 
-MuBlockStoreError MuScaleBlockStore::seek(size_t lba) {
+namespace MuStore {
+
+StoreError ScaleStore::seek(size_t lba) {
     if (store && scale) {
         auto err = store->seek(lba * scale);
         if (!err)
             pos = lba;
         return err;
     } else {
-        return MUBLOCKSTORE_ERR_IO;
+        return STORE_ERR_IO;
     }
 }
 
-MuBlockStoreError MuScaleBlockStore::read(void *buffer) {
+StoreError ScaleStore::read(void *buffer) {
     if (store && scale) {
         for (size_t i = 0; i < scale; i++) {
             auto err = store->read((uint8_t*)buffer + i * store->getBlockSize());
@@ -27,13 +43,13 @@ MuBlockStoreError MuScaleBlockStore::read(void *buffer) {
             }
         }
         pos++;
-        return MUBLOCKSTORE_ERR_OK;
+        return STORE_ERR_OK;
     } else {
-        return MUBLOCKSTORE_ERR_IO;
+        return STORE_ERR_IO;
     }
 }
 
-MuBlockStoreError MuScaleBlockStore::write(const void *buffer) {
+StoreError ScaleStore::write(const void *buffer) {
     if (store && scale) {
         for (size_t i = 0; i < scale; i++) {
             auto err = store->write((const uint8_t*)buffer + i * store->getBlockSize());
@@ -43,14 +59,14 @@ MuBlockStoreError MuScaleBlockStore::write(const void *buffer) {
             }
         }
         pos++;
-        return MUBLOCKSTORE_ERR_OK;
+        return STORE_ERR_OK;
     } else {
-        return MUBLOCKSTORE_ERR_IO;
+        return STORE_ERR_IO;
     }
 }
 
-MuScaleBlockStore::MuScaleBlockStore(MuBlockStore *store_, size_t blockSize_)
-    : MuBlockStore(
+ScaleStore::ScaleStore(Store *store_, size_t blockSize_)
+    : Store(
         blockSize_,
         store_->getBlockCount() / (blockSize_ / store_->getBlockSize())
       ),
@@ -61,4 +77,6 @@ MuScaleBlockStore::MuScaleBlockStore(MuBlockStore *store_, size_t blockSize_)
         store = nullptr; // Fail.
     else
         store->seek(0);
+}
+
 }

@@ -1,34 +1,50 @@
 /**
  * \file
- * \brief     MuBlockStore header.
+ * \brief     Store header.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ *
+ * \page License
+ *
+ * This library is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #pragma once
 
 #include <cstdint>
 #include <cstdlib>
 
+namespace MuStore {
+
 /**
- * \brief MuBlockStore error numbers.
+ * \brief Store error numbers.
  *
  * Any non-zero value indicates an error.
  */
-enum MuBlockStoreError : int {
-    MUBLOCKSTORE_ERR_OK = 0,        ///< No error.
-    MUBLOCKSTORE_ERR_IO,            ///< Generic I/O error.
-    MUBLOCKSTORE_ERR_NOT_WRITABLE,  ///< Write to read-only medium attempted.
-    MUBLOCKSTORE_ERR_OUT_OF_BOUNDS, ///< Attempted I/O operation exceeded medium size.
+enum StoreError : int {
+    STORE_ERR_OK = 0,        ///< No error.
+    STORE_ERR_IO,            ///< Generic I/O error.
+    STORE_ERR_NOT_WRITABLE,  ///< Write to read-only medium attempted.
+    STORE_ERR_OUT_OF_BOUNDS, ///< Attempted I/O operation exceeded medium size.
 };
 
 /**
- * \brief MuBlockStore generic block storage class.
+ * \brief Generic block storage class.
  *
  * This class provides an interface for any type of storage that
  * supports seeking and reading / writing in chunks.
  */
-class MuBlockStore {
+class Store {
 
 protected:
     // Properties of the medium used {{{
@@ -64,14 +80,14 @@ public:
      *
      * \param lba The block number to seek to.
      *
-     * \retval MUBLOCKSTORE_ERR_OK
-     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when seeking to or past getBlockCount()
-     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
+     * \retval STORE_ERR_OK
+     * \retval STORE_ERR_OUT_OF_BOUNDS when seeking to or past getBlockCount()
+     * \retval STORE_ERR_IO for other backend errors
      */
-    virtual MuBlockStoreError seek(size_t lba) = 0;
+    virtual StoreError seek(size_t lba) = 0;
 
     /// Seek to the starting address.
-    virtual MuBlockStoreError rewind() { return seek(0); }
+    virtual StoreError rewind() { return seek(0); }
 
     /**
      * \brief Read a single block from the current \ref pos "position"
@@ -84,11 +100,11 @@ public:
      *
      * \param buffer the destination buffer
      *
-     * \retval MUBLOCKSTORE_ERR_OK
-     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when reading past getBlockCount()
-     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
+     * \retval STORE_ERR_OK
+     * \retval STORE_ERR_OUT_OF_BOUNDS when reading past getBlockCount()
+     * \retval STORE_ERR_IO for other backend errors
      */
-    virtual MuBlockStoreError read (void *buffer) = 0;
+    virtual StoreError read (void *buffer) = 0;
 
     /**
      * \brief Write a single block from the specified buffer to the
@@ -101,12 +117,12 @@ public:
      *
      * \param buffer the source buffer
      *
-     * \retval MUBLOCKSTORE_ERR_OK
-     * \retval MUBLOCKSTORE_ERR_NOT_WRITABLE when attempting to write to a read-only medium (check isWritable() first)
-     * \retval MUBLOCKSTORE_ERR_OUT_OF_BOUNDS when writing past getBlockCount()
-     * \retval MUBLOCKSTORE_ERR_IO for other backend errors
+     * \retval STORE_ERR_OK
+     * \retval STORE_ERR_NOT_WRITABLE when attempting to write to a read-only medium (check isWritable() first)
+     * \retval STORE_ERR_OUT_OF_BOUNDS when writing past getBlockCount()
+     * \retval STORE_ERR_IO for other backend errors
      */
-    virtual MuBlockStoreError write(const void *buffer) = 0;
+    virtual StoreError write(const void *buffer) = 0;
 
     /// @}
 
@@ -114,16 +130,16 @@ public:
     /// @{
 
     /// Shortcut for a seek() + read() operation. Returns the first error if any.
-    virtual MuBlockStoreError read (size_t lba, void *buffer) {
-        MuBlockStoreError err = seek(lba);
+    virtual StoreError read (size_t lba, void *buffer) {
+        StoreError err = seek(lba);
         if (!err)
             err = read(buffer);
         return err;
     }
 
     /// Shortcut for a seek() + write() operation. Returns the first error if any.
-    virtual MuBlockStoreError write(size_t lba, const void *buffer) {
-        MuBlockStoreError err = seek(lba);
+    virtual StoreError write(size_t lba, const void *buffer) {
+        StoreError err = seek(lba);
         if (!err)
             err = write(buffer);
         return err;
@@ -131,11 +147,13 @@ public:
 
     /// @}
 
-    MuBlockStore(size_t blockSize_ = 512, size_t blockCount_ = 0, bool writable_ = false)
+    Store(size_t blockSize_ = 512, size_t blockCount_ = 0, bool writable_ = false)
         : blockSize(blockSize_),
           blockCount(blockCount_),
           writable(writable_),
           pos(0) { }
 
-    virtual ~MuBlockStore() = default;
+    virtual ~Store() = default;
 };
+
+}
