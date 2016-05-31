@@ -40,7 +40,7 @@ public:
     static const size_t MAX_NAME_LENGTH = 32;
 
     /// Size of the node context region for FS implementation-defined usage.
-    static const size_t CONTEXT_SIZE    = 24;
+    static const size_t CONTEXT_SIZE    = 40;
 
 protected:
     Fs *fs; ///< The Fs in which this file resides.
@@ -112,6 +112,9 @@ public:
 
     /// Proxy for Fs::mkfile().
     FsNode mkfile(const char *name, FsError &err);
+
+    /// Proxy for Fs::truncate().
+    FsError truncate();
 
     /// @}
 

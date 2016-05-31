@@ -33,6 +33,7 @@ TEST_MAIN() {
     TEST_FS_WITH(FatFs(&store), get_file);
     TEST_FS_WITH(FatFs(&store), get_dir);
     TEST_FS_WITH(FatFs(&store), file_read);
+    TEST_FS_WITH(FatFs(&store), file_write);
 
     TEST_END();
 }

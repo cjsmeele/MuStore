@@ -62,4 +62,8 @@ FsNode FsNode::mkfile(const char *name_, FsError &err) {
     return fs->mkfile(*this, name_, err);
 }
 
+FsError FsNode::truncate() {
+    return fs->truncate(*this);
+}
+
 }
