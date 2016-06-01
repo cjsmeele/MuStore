@@ -42,4 +42,28 @@ FsNode FsNode::readDir(FsError &err) {
     return fs->readDir(*this, err);
 }
 
+FsError FsNode::remove() {
+    return fs->removeNode(*this);
+}
+
+FsError FsNode::rename(const char *newName) {
+    return fs->renameNode(*this, newName);
+}
+
+FsError FsNode::move(const char *newPath) {
+    return fs->moveNode(*this, newPath);
+}
+
+FsNode FsNode::mkdir(const char *name_, FsError &err) {
+    return fs->mkdir(*this, name_, err);
+}
+
+FsNode FsNode::mkfile(const char *name_, FsError &err) {
+    return fs->mkfile(*this, name_, err);
+}
+
+FsError FsNode::truncate() {
+    return fs->truncate(*this);
+}
+
 }

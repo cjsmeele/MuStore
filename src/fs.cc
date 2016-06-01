@@ -41,6 +41,9 @@ FsNode Fs::makeNode(
 void Fs::nodeUpdatePos(FsNode &node, size_t pos) const {
     node.pos = pos;
 }
+void Fs::nodeUpdateSize(FsNode &node, size_t size) const {
+    node.size = size;
+}
 
 void *Fs::getNodeContext(FsNode &node) const {
     return node.fsContext;

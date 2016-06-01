@@ -77,6 +77,8 @@ protected:
 
     /// Update the position of the provided node.
     void nodeUpdatePos(FsNode &node, size_t newPos) const;
+    /// Update the size of the provided node.
+    void nodeUpdateSize(FsNode &node, size_t newSize) const;
 
     /// Get a pointer to the nodeContext member of the provided node.
     void *getNodeContext(FsNode &node) const;
@@ -161,6 +163,16 @@ public:
      */
     virtual FsNode readDir(FsNode &parent, FsError &err) = 0;
 
+    virtual FsError removeNode(FsNode &node) = 0;
+
+    virtual FsError renameNode(FsNode &node, const char *newName) = 0;
+
+    virtual FsError moveNode(FsNode &node, const char *newPath) = 0;
+
+    virtual FsNode mkdir(FsNode &parent, const char *name, FsError &err) = 0;
+
+    virtual FsNode mkfile(FsNode &parent, const char *name, FsError &err) = 0;
+
     /// @}
 
     /// \name File I/O
@@ -216,6 +228,8 @@ public:
      *         than `size` on error, check `err`!
      */
     virtual size_t write(FsNode &file, const void *buffer, size_t size, FsError &err) = 0;
+
+    virtual FsError truncate(FsNode &file) = 0;
 
     /// @}
 

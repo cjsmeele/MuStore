@@ -46,7 +46,6 @@ private:
     uint8_t  fatCount          = 0;
     uint32_t fatSize           = 0; ///< In blocks.
     uint8_t  clusterSize       = 0; ///< In blocks.
-    uint8_t  clusterCount      = 0;
     uint16_t reservedBlocks    = 0;
 
     size_t fatLba            = 0;
@@ -69,18 +68,31 @@ private:
     size_t  dataCacheLba = 0; ///< LBA of the currently cached data block.
     uint8_t dataCache[MAX_BLOCK_SIZE];
 
-    StoreError getBlock(size_t blockNo, void *buffer);
-    StoreError getCacheBlock(size_t lba, void *cache, size_t &cacheLba);
+    StoreError readBlock(size_t lba, void *buffer);
+    StoreError writeBlock(size_t lba, const void *buffer);
 
-    StoreError getFatBlock (size_t blockNo, void **buffer);
-    StoreError getRootBlock(size_t blockNo, void **buffer);
-    StoreError getDataBlock(size_t blockNo, void **buffer);
+    StoreError readCacheBlock(size_t lba, void *cache, size_t &cacheLba);
+    StoreError writeCacheBlock(size_t lba, const void *buffer, void *cache, size_t &cacheLba);
 
-    /// Magic end-of-chain block value.
-    static const size_t BLOCK_EOC = ~(size_t)0ULL;
+    StoreError readFatBlock (size_t blockNo, void **buffer);
+    StoreError readRootBlock(size_t blockNo, void **buffer);
+    StoreError readDataBlock(size_t blockNo, void **buffer);
+
+    StoreError writeFatBlock (size_t blockNo, const void *buffer);
+    StoreError writeRootBlock(size_t blockNo, const void *buffer);
+    StoreError writeDataBlock(size_t blockNo, const void *buffer);
+
+    /// Magic end-of-chain lba, used internally.
+    static const size_t BLOCK_EOC    = ~(size_t)0ULL;
+    /// FAT cluster EOC marker. NOTE: this is not the only possible EOC marker value!
+    static const size_t CLUSTER_EOC = ~(size_t)0ULL;
+    /// FAT cluster free marker.
+    static const size_t CLUSTER_FREE = (size_t)0ULL;
 
     inline size_t blockToCluster(size_t blockNo) const {
         // Add the two reserved clusters.
+        if (blockNo == BLOCK_EOC)
+            return CLUSTER_EOC;
         return blockNo / clusterSize + 2;
     }
     inline size_t clusterToBlock(size_t clusterNo) const {
@@ -93,8 +105,14 @@ private:
             return (clusterNo - 2) * clusterSize;
     }
 
-    FsError getNodeBlock(FsNode &node, void **buffer);
-    FsError incNodeBlock(FsNode &node);
+    FsError getFatEntry(size_t clusterNo, size_t &entry);
+    FsError setFatEntry(size_t clusterNo, size_t nextCluster);
+
+    FsError allocCluster(size_t currentCluster, size_t &nextCluster);
+
+    FsError  readNodeBlock(FsNode &node, void **buffer);
+    FsError writeNodeBlock(FsNode &node, const void *buffer);
+    FsError   incNodeBlock(FsNode &node, bool allocate = false);
 
 public:
     const char *getFsType() const { return "FAT";   }
@@ -121,9 +139,17 @@ public:
     FsNode getRoot(FsError &err);
     FsNode readDir(FsNode &parent, FsError &err);
 
+    FsError removeNode(FsNode &node);
+    FsError renameNode(FsNode &node, const char *newName);
+    FsError   moveNode(FsNode &node, const char *newPath);
+    FsNode mkdir (FsNode &parent, const char *name, FsError &err);
+    FsNode mkfile(FsNode &parent, const char *name, FsError &err);
+
     FsError seek (FsNode &node, size_t pos_);
     size_t read (FsNode &file,       void *buffer, size_t size, FsError &err);
     size_t write(FsNode &file, const void *buffer, size_t size, FsError &err);
+
+    FsError truncate(FsNode &file);
 
     /**
      * \brief FatFs constructor.

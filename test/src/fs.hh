@@ -50,6 +50,7 @@ TEST(root_readdir) {
         "DIR2",
         "TEST.TXT",
         "HUGE.TXT",
+        "WRITE.TXT",
     };
 
     size_t i = 0;
@@ -221,4 +222,82 @@ TEST(large_file_read) {
             ASSERT(!feof(fileRef), "expected EOF on read(), didn't get it");
         }
     }
+}
+
+TEST(file_write) {
+    FsError err;
+    FsNode file = fs->get("/write.txt", err);
+    ASSERT(!err, "get() of file '/write.txt' failed (err=%d)", err);
+
+    size_t currentSize = file.getSize();
+    if (currentSize > 6) {
+        file.seek(6);
+        err = file.truncate();
+        ASSERT(!err, "truncate failed with err=%d", err);
+        file.rewind();
+        currentSize = file.getSize();
+    }
+    ASSERT(currentSize == 6, "size of file '/write.txt' should be 6, is %lu", currentSize);
+
+    uint8_t bufferR[4096 + 6] = { };
+
+    size_t bytesRead = file.read(bufferR, 4096, err);
+    ASSERT(bytesRead == 6, "read bytes should be 6, is %lu", bytesRead);
+    ASSERT(!strcmp((char*)bufferR, "START\n"), "file content mismatch");
+
+    uint8_t bufferW[4096];
+    for (size_t i = 0; i < 4096; i++)
+        bufferW[i] = rand();
+
+    size_t bytesWritten = file.write(bufferW, 4096, err);
+    ASSERT(!err, "write() of file '/write.txt' failed (err=%d)", err);
+    ASSERT(bytesWritten == 4096, "written bytes should be 4096, is %lu", bytesWritten);
+
+    currentSize = file.getSize();
+    ASSERT(currentSize == 4096 + 6,
+           "size of file '/write.txt' should be %lu, is %lu", 4096UL+6, currentSize);
+
+    memset(bufferR, 0, sizeof(bufferR));
+    err = file.rewind();
+    ASSERT(!err, "rewind() of file '/write.txt' failed (err=%d)", err);
+
+    bytesRead = file.read(bufferR, sizeof(bufferR), err);
+    ASSERT(bytesRead == sizeof(bufferR),
+           "read bytes should be %lu, is %lu", sizeof(bufferR), bytesRead);
+    ASSERT(!strncmp((char*)bufferR, "START\n", 6), "file content mismatch (original text missing)");
+
+    for (size_t i = 6; i < sizeof(bufferR); i++)
+        ASSERT(bufferR[i] == bufferW[i-6], "file content mismatch at byte %lu", i);
+
+    file.seek(6);
+    file.truncate();
+    ASSERT(file.getSize() == 6, "truncated file should be of size 6, is %lu", file.getSize());
+
+    file.seek(2);
+    file.write("E", 1, err);
+    ASSERT(!err, "overwriting file failed with err=%d", err);
+    file.rewind();
+    memset(bufferR, 0, sizeof(bufferR));
+    bytesRead = file.read(bufferR, 6, err);
+    ASSERT(bytesRead == 6, "read bytes should be 6, is %lu", bytesRead);
+    ASSERT(!strcmp((char*)bufferR, "STERT\n"), "file content mismatch (should be 'STERT', is '%6s')", bufferR);
+
+    file.seek(2);
+    file.write("A", 1, err);
+}
+
+TEST(file_remove) {
+    ASSERT(false, "TEST WIP");
+}
+
+TEST(file_create) {
+    ASSERT(false, "TEST WIP");
+}
+
+TEST(file_rename) {
+    ASSERT(false, "TEST WIP");
+}
+
+TEST(file_move) {
+    ASSERT(false, "TEST WIP");
 }
