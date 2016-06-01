@@ -1,0 +1,3 @@
+CXXFLAGS="-Os -g0 -mcpu=cortex-m3 -mthumb -nostdlib -fno-rtti -fno-exceptions" \
+    CXX=/usr/bin/arm-none-eabi-g++ AR=/usr/bin/arm-none-eabi-ar MUSTORE_ENABLE_BLOCK=mem MUSTORE_ENABLE_FS=fat \
+    make -B

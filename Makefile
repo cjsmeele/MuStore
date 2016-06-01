@@ -39,7 +39,6 @@ endif
 
 MUSTORE_ENABLE_BLOCK ?= file mem
 MUSTORE_ENABLE_FS    ?= fat
-MUSTORE_ENABLE_VFS   ?= 1
 
 -include Makefile.local
 
