@@ -4,7 +4,7 @@
  * \brief     Tests for ScaleStore.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ * \license   Boost, see LICENSE
  */
 #include "test.hh"
 #include "store.hh"

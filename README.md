@@ -20,7 +20,7 @@ The primary development target for this project is the
 
 ### Filesystem backends ###
 
-- A (currently read-only) generic FAT driver with support for FAT12, FAT16 and FAT32.
+- A generic FAT driver with support for FAT12, FAT16 and FAT32.
 
 ## Author ##
 
@@ -30,5 +30,5 @@ The primary development target for this project is the
 
 Copyright (c) 2016, Chris Smeele.
 
-MuStore is licensed under the GNU Lesser General Public License version
-3 or higher (LGPLv3+). See the `LICENSE` file for details.
+MuStore is licensed under the Boost Software License version 1.0.
+See the `LICENSE` file for details.

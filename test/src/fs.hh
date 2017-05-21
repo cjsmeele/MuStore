@@ -3,7 +3,7 @@
  * \brief     Tests for Fs providers.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ * \license   Boost, see LICENSE
  */
 #pragma once
 

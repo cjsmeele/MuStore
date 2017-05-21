@@ -3,7 +3,7 @@
  * \brief     Tests for Store providers.
  * \author    Chris Smeele
  * \copyright Copyright (c) 2016, Chris Smeele
- * \license   LGPLv3+, see LICENSE
+ * \license   Boost, see LICENSE
  *
  * Note: These tests assume the provided media contain a 0xaa55 boot
  * sector signature.
