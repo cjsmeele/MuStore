@@ -6,3 +6,4 @@
 *.a
 /doc/
 tags
+/build
